@@ -260,6 +260,7 @@
         const next = Math.min(8, Math.max(1, paxPetsState[prefix].pax + dir));
         paxPetsState[prefix].pax = next;
         valueEl.textContent = String(next);
+        refreshQuoteMessage(prefix);
         persistAll();
       });
     });
@@ -269,6 +270,7 @@
       petsBtn.classList.toggle("on");
       paxPetsState[prefix].pets = petsBtn.classList.contains("on");
       petsBtn.setAttribute("aria-pressed", String(paxPetsState[prefix].pets));
+      refreshQuoteMessage(prefix);
       persistAll();
     });
   }
@@ -291,6 +293,44 @@
 
   /* ---------------- Cotización genérica ---------------- */
   const quoteRouteData = {}; // por prefijo: { originLatLng, destLatLng, coords, real }
+  const lastQuoteResult = {}; // por prefijo: datos de la última cotización mostrada (sin pax/mascota)
+
+  const SERVICE_NAMES = {
+    movilizarte: "viaje local",
+    aeropuerto: "traslado al aeropuerto",
+    departamento: "viaje interdepartamental",
+    turismo: "viaje turístico",
+  };
+
+  function buildQuoteMessage(prefix, { originName, destName, price, minutes, distanceKm, extraLine, real }) {
+    const { passengers, pets } = paxPetsFor(prefix);
+    const mapsLink = originMapsLink();
+    return (
+      `Hola *MOVILIDAD 360 SV* 👋\n\n` +
+      `Quiero cotizar un *${SERVICE_NAMES[prefix]}*:\n` +
+      `📍 Desde: ${originName}` +
+      (mapsLink ? ` — ${mapsLink}` : "") +
+      `\n` +
+      `🎯 Hasta: ${destName}\n` +
+      `📏 Distancia ${real ? "real por carretera" : "aproximada"}: ${distanceKm.toFixed(1)} km\n` +
+      `💵 Precio estimado: ${formatMoney(price)}\n` +
+      `⏱️ Tiempo estimado: ${formatEta(minutes)}\n` +
+      `👥 Pasajeros: ${passengers}\n` +
+      `🐾 Mascota: ${pets ? "Sí" : "No"}` +
+      (extraLine ? `\n${extraLine}` : "") +
+      `\n\n¿Podrían confirmar disponibilidad?`
+    );
+  }
+
+  // Se llama cuando cambian pasajeros/mascota después de ya mostrar una
+  // cotización, para que el mensaje de WhatsApp quede siempre al día sin
+  // tener que volver a calcular la ruta.
+  function refreshQuoteMessage(prefix) {
+    const data = lastQuoteResult[prefix];
+    const waBtn = $(`#wa-${prefix}`);
+    if (!data || !waBtn) return;
+    waBtn.href = waLink(buildQuoteMessage(prefix, data));
+  }
 
   function showQuoteLoading(prefix, originName, destName) {
     $(`#quote-${prefix}-route`).textContent = `${originName} → ${destName}`;
@@ -308,7 +348,8 @@
     if (routeLinkEl) routeLinkEl.hidden = true;
   }
 
-  function showQuote(prefix, { originName, destName, price, minutes, distanceKm, extraLine, real, passengers, pets }) {
+  function showQuote(prefix, data) {
+    const { originName, destName, price, minutes, distanceKm, real } = data;
     $(`#quote-${prefix}-route`).textContent = `${originName} → ${destName} · ${distanceKm.toFixed(1)} km`;
     $(`#quote-${prefix}-price`).textContent = formatMoney(price);
     $(`#quote-${prefix}-eta`).textContent = `Tiempo estimado: ${formatEta(minutes)}`;
@@ -329,30 +370,8 @@
     const routeLinkEl = $(`#route-link-${prefix}`);
     if (routeLinkEl) routeLinkEl.hidden = false;
 
-    const serviceNames = {
-      movilizarte: "viaje local",
-      aeropuerto: "traslado al aeropuerto",
-      departamento: "viaje interdepartamental",
-      turismo: "viaje turístico",
-    };
-
-    const mapsLink = originMapsLink();
-    const msg =
-      `Hola *MOVILIDAD 360 SV* 👋\n\n` +
-      `Quiero cotizar un *${serviceNames[prefix]}*:\n` +
-      `📍 Desde: ${originName}` +
-      (mapsLink ? ` — ${mapsLink}` : "") +
-      `\n` +
-      `🎯 Hasta: ${destName}\n` +
-      `📏 Distancia ${real ? "real por carretera" : "aproximada"}: ${distanceKm.toFixed(1)} km\n` +
-      `💵 Precio estimado: ${formatMoney(price)}\n` +
-      `⏱️ Tiempo estimado: ${formatEta(minutes)}\n` +
-      `👥 Pasajeros: ${passengers || 1}\n` +
-      `🐾 Mascota: ${pets ? "Sí" : "No"}` +
-      (extraLine ? `\n${extraLine}` : "") +
-      `\n\n¿Podrían confirmar disponibilidad?`;
-
-    $(`#wa-${prefix}`).href = waLink(msg);
+    lastQuoteResult[prefix] = data;
+    $(`#wa-${prefix}`).href = waLink(buildQuoteMessage(prefix, data));
   }
 
   /* =====================================================================
@@ -406,7 +425,6 @@
       real: route.real,
     };
     const price = estimatePrice(route.distanceKm);
-    const { passengers, pets } = paxPetsFor("movilizarte");
     showQuote("movilizarte", {
       originName,
       destName: place.name,
@@ -414,8 +432,6 @@
       minutes: route.minutes,
       distanceKm: route.distanceKm,
       real: route.real,
-      passengers,
-      pets,
     });
     persistAll();
   }
@@ -471,7 +487,6 @@
       real: route.real,
     };
     const price = estimatePrice(route.distanceKm);
-    const { passengers, pets } = paxPetsFor("aeropuerto");
     showQuote("aeropuerto", {
       originName,
       destName: airport.name,
@@ -479,8 +494,6 @@
       minutes: route.minutes,
       distanceKm: route.distanceKm,
       real: route.real,
-      passengers,
-      pets,
       extraLine: "✈️ Por favor confirmar hora de vuelo para calcular hora de recogida.",
     });
     persistAll();
@@ -660,7 +673,6 @@
       real: route.real,
     };
     const price = estimatePrice(route.distanceKm);
-    const { passengers, pets } = paxPetsFor("departamento");
     showQuote("departamento", {
       originName,
       destName,
@@ -668,8 +680,6 @@
       minutes: route.minutes,
       distanceKm: route.distanceKm,
       real: route.real,
-      passengers,
-      pets,
     });
     persistAll();
   }
@@ -763,7 +773,6 @@
       real: route.real,
     };
     const price = estimatePrice(route.distanceKm);
-    const { passengers, pets } = paxPetsFor("turismo");
     showQuote("turismo", {
       originName,
       destName: place.name,
@@ -771,8 +780,6 @@
       minutes: route.minutes,
       distanceKm: route.distanceKm,
       real: route.real,
-      passengers,
-      pets,
     });
     persistAll();
   }
@@ -1064,17 +1071,10 @@
           departamento: lastDepartmentSelection,
           turismo: lastTourismSelection,
         }[prefix];
-        if (!selection) return;
-        const priceText = $(`#quote-${prefix}-price`).textContent;
-        const routeText = $(`#quote-${prefix}-route`).textContent;
-        const etaText = $(`#quote-${prefix}-eta`).textContent;
-        if (!priceText || priceText === "…") return;
+        if (!selection || !lastQuoteResult[prefix]) return;
         state.travel[prefix] = {
           place: selection,
-          originName: originLabel(),
-          priceText,
-          routeText,
-          etaText,
+          quoteData: lastQuoteResult[prefix],
           route: quoteRouteData[prefix] || null,
           paxPets: paxPetsState[prefix] || { pax: 1, pets: false },
         };
@@ -1121,18 +1121,7 @@
 
         if (saved.paxPets) applyPaxPetsUi(prefix, saved.paxPets.pax, saved.paxPets.pets);
         if (saved.route) quoteRouteData[prefix] = saved.route;
-
-        $(`#quote-${prefix}-route`).textContent = saved.routeText;
-        $(`#quote-${prefix}-price`).textContent = saved.priceText;
-        $(`#quote-${prefix}-eta`).textContent = saved.etaText;
-        $(`#quote-${prefix}`).classList.add("show");
-        const badge = $(`#quote-${prefix}-badge`);
-        if (badge && saved.route) {
-          badge.textContent = saved.route.real ? "🧭 Ruta real por carretera" : "≈ Ruta aproximada (línea recta)";
-          badge.classList.toggle("is-approx", !saved.route.real);
-        }
-        const routeLinkEl = $(`#route-link-${prefix}`);
-        if (routeLinkEl) routeLinkEl.hidden = !saved.route;
+        if (saved.quoteData) showQuote(prefix, saved.quoteData);
       });
     }
 
