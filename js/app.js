@@ -1004,6 +1004,68 @@
     });
   }
 
+  function renderFAQ() {
+    const list = $("#faq-list");
+    if (!list) return;
+    list.innerHTML = FAQS.map(
+      (item, i) => `
+      <div class="faq-item">
+        <button type="button" class="faq-question" id="faq-q-${i}" aria-expanded="false" aria-controls="faq-a-${i}">
+          <span>${item.q}</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <div class="faq-answer" id="faq-a-${i}" role="region" aria-labelledby="faq-q-${i}">
+          <p>${item.a}</p>
+        </div>
+      </div>`
+    ).join("");
+
+    $$(".faq-question", list).forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const answer = document.getElementById(btn.getAttribute("aria-controls"));
+        const isOpen = answer.classList.toggle("open");
+        btn.setAttribute("aria-expanded", String(isOpen));
+        btn.classList.toggle("open", isOpen);
+      });
+    });
+  }
+
+  // Muestra el enlace a reseñas de Google solo si ya se configuró la URL
+  // real en CONFIG.googleReviewsUrl (data.js).
+  function wireGoogleReviewsLink() {
+    const el = $("#google-reviews-link");
+    if (!el) return;
+    if (CONFIG.googleReviewsUrl) {
+      el.href = CONFIG.googleReviewsUrl;
+      el.hidden = false;
+    }
+  }
+
+  /* =====================================================================
+     Analítica (lista para activar en cuanto se conecte Google Analytics)
+     ===================================================================== */
+  function trackEvent(name, params) {
+    if (typeof window.gtag === "function") {
+      window.gtag("event", name, params || {});
+    }
+  }
+
+  function wireAnalyticsEvents() {
+    document.addEventListener("click", (e) => {
+      const waBtn = e.target.closest('a[href*="wa.me"]');
+      if (waBtn) trackEvent("whatsapp_click", { link_id: waBtn.id || "unknown" });
+    });
+  }
+
+  /* =====================================================================
+     PWA: registro del service worker (instalable / carga más rápida)
+     ===================================================================== */
+  function registerServiceWorker() {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
+  }
+
   /* =====================================================================
      Paneles expandibles (toggle)
      ===================================================================== */
@@ -1208,6 +1270,10 @@
     renderTestimonials();
     renderVehicles();
     renderStats();
+    renderFAQ();
+    wireGoogleReviewsLink();
+    wireAnalyticsEvents();
+    registerServiceWorker();
 
     TRAVEL_PREFIXES.forEach(injectPaxPetsControls);
 
