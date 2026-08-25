@@ -4,12 +4,41 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Movilidad 360 SV — Tu destino está más cerca de lo que te imaginas</title>
-<meta name="description" content="Movilidad 360 SV: cotiza y reserva viajes locales, traslados al aeropuerto, envío de encomiendas, viajes a cualquier departamento y a los mejores destinos turísticos de El Salvador.">
+<meta name="description" content="Movilidad 360 SV: cotiza y reserva viajes locales, traslados al aeropuerto, envío de encomiendas, viajes a cualquier departamento y a los mejores destinos turísticos de El Salvador. Cotización con distancia real de ruta y respuesta estimada en 5 minutos.">
+<meta name="robots" content="index, follow">
+<!-- Open Graph / redes sociales -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Movilidad 360 SV">
+<meta property="og:title" content="Movilidad 360 SV — Tu destino está más cerca de lo que te imaginas">
+<meta property="og:description" content="Cotiza y reserva viajes locales, traslados al aeropuerto, envío de encomiendas, viajes interdepartamentales y turismo en El Salvador, directo por WhatsApp.">
+<meta property="og:locale" content="es_SV">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Movilidad 360 SV">
+<meta name="twitter:description" content="Cotiza y reserva tu transporte en El Salvador directo por WhatsApp.">
+<!-- ⚠️ Cuando el sitio tenga dominio propio, agrega aquí <link rel="canonical" href="https://tu-dominio.com/"> -->
+<!-- ⚠️ Google Analytics (GA4): pega tu snippet de gtag.js aquí cuando tengas tu Measurement ID (G-XXXXXXX) -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%230d1a33'/%3E%3Cpath d='M20 60 L50 30 L80 60' stroke='%23e0993a' stroke-width='8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="css/styles.css">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "name": "Movilidad 360 SV",
+  "description": "Servicio de transporte en El Salvador: viajes locales, traslados al aeropuerto, envío de encomiendas, viajes interdepartamentales y turismo.",
+  "areaServed": {
+    "@type": "Country",
+    "name": "El Salvador"
+  },
+  "telephone": "+503 7503-1132",
+  "priceRange": "$$"
+}
+</script>
 </head>
 <body>
+
+<a href="#paradas" class="skip-link">Saltar al contenido principal</a>
 
 <!-- ============ HEADER ============ -->
 <header class="site-header">
@@ -48,9 +77,11 @@
           Reserva tu viaje con MOVILIDAD 360 SV
         </a>
       </div>
+      <p class="response-badge"><span aria-hidden="true">⏱️</span> <span class="response-badge-text">Respuesta estimada: ~5 min</span></p>
       <div class="hero-stats">
         <div class="hero-stat"><b>5</b><span>formas de moverte</span></div>
         <div class="hero-stat"><b>14</b><span>departamentos cubiertos</span></div>
+        <div class="hero-stat"><b id="stat-trips">+500</b><span>viajes realizados</span></div>
         <div class="hero-stat"><b>100%</b><span>cotización al instante y negociable</span></div>
       </div>
     </div>
@@ -61,9 +92,9 @@
     <div class="journey-head wrap">
       <span class="eyebrow">Tu ruta con nosotros</span>
       <h2 class="section-title">Cinco formas de llegar a donde vas</h2>
-      <p class="section-lede">Elige una parada, cuéntanos hacia dónde vas y te enviamos la cotización directo a WhatsApp para confirmar tu reserva.</p>
+      <p class="section-lede">Elige una parada, cuéntanos hacia dónde vas y te enviamos la cotización directo a WhatsApp para confirmar tu reserva. El precio y el tiempo se calculan con la distancia real de la ruta por carretera.</p>
       <div class="geo-banner">
-        <p class="field-hint" id="geo-status">Activa tu ubicación para que el tiempo y el precio de todas las cotizaciones se calculen desde donde estás.</p>
+        <p class="field-hint" id="geo-status" role="status" aria-live="polite">Activa tu ubicación para que el tiempo y el precio de todas las cotizaciones se calculen desde donde estás.</p>
         <button class="btn btn-outline-ink btn-sm" id="btn-locate">Usar mi ubicación</button>
       </div>
     </div>
@@ -82,7 +113,7 @@
           <div class="stop-card">
             <p class="stop-kicker">Parada 01 — Viaje local</p>
             <h3>¿Necesitas movilizarte?</h3>
-            <p class="lede">Un viaje dentro del área metropolitana, a tu ritmo. Dinos a dónde vas y te mostramos una cotización estimada al momento.</p>
+            <p class="lede">Un viaje dentro del área metropolitana, a tu ritmo. Dinos a dónde vas y te mostramos una cotización estimada con la distancia real de la ruta.</p>
             <button class="btn btn-outline-ink toggle-launch" data-toggle="panel-movilizarte" aria-expanded="false">
               Buscar destino
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
@@ -100,11 +131,13 @@
                 <button class="btn btn-outline-ink btn-sm" data-open-map="movilizarte">Elegir en el mapa</button>
               </div>
               <div class="quote-box" id="quote-movilizarte">
-                <div class="quote-info">
+                <div class="quote-info" aria-live="polite">
                   <span class="quote-route" id="quote-movilizarte-route"></span>
                   <span class="quote-price" id="quote-movilizarte-price"></span>
                   <span class="quote-eta" id="quote-movilizarte-eta"></span>
-                  <span class="quote-disclaimer">Precio estimado a $0.55/km en línea recta desde tu ubicación. Se confirma por WhatsApp.</span>
+                  <span class="quote-route-badge" id="quote-movilizarte-badge"></span>
+                  <button type="button" class="quote-route-link" id="route-link-movilizarte" data-view-route="movilizarte" hidden>Ver ruta en el mapa</button>
+                  <span class="quote-disclaimer">Precio estimado según la distancia real de la ruta. Se confirma por WhatsApp.</span>
                 </div>
                 <a class="btn btn-gold btn-wa btn-sm" id="wa-movilizarte" href="#" target="_blank" rel="noopener">Reservar por WhatsApp</a>
               </div>
@@ -123,7 +156,7 @@
           <div class="stop-card">
             <p class="stop-kicker">Parada 02 — Traslado aéreo</p>
             <h3>¿Un viaje al aeropuerto?</h3>
-            <p class="lede">Detectamos el aeropuerto más cercano según tu ubicación. Elige a cuál quieres ir y te damos un tiempo estimado de llegada.</p>
+            <p class="lede">Detectamos el aeropuerto más cercano según tu ubicación. Elige a cuál quieres ir y te damos un tiempo estimado de llegada con la ruta real por carretera.</p>
             <button class="btn btn-outline-ink toggle-launch" data-toggle="panel-aeropuerto" aria-expanded="false">
               Ver aeropuertos cercanos
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
@@ -132,11 +165,13 @@
             <div class="panel" id="panel-aeropuerto">
               <div class="option-grid" id="list-aeropuerto"></div>
               <div class="quote-box" id="quote-aeropuerto">
-                <div class="quote-info">
+                <div class="quote-info" aria-live="polite">
                   <span class="quote-route" id="quote-aeropuerto-route"></span>
                   <span class="quote-price" id="quote-aeropuerto-price"></span>
                   <span class="quote-eta" id="quote-aeropuerto-eta"></span>
-                  <span class="quote-disclaimer">Precio estimado a $0.55/km en línea recta desde tu ubicación. Se confirma por WhatsApp.</span>
+                  <span class="quote-route-badge" id="quote-aeropuerto-badge"></span>
+                  <button type="button" class="quote-route-link" id="route-link-aeropuerto" data-view-route="aeropuerto" hidden>Ver ruta en el mapa</button>
+                  <span class="quote-disclaimer">Precio estimado según la distancia real de la ruta. Se confirma por WhatsApp.</span>
                 </div>
                 <a class="btn btn-gold btn-wa btn-sm" id="wa-aeropuerto" href="#" target="_blank" rel="noopener">Reservar por WhatsApp</a>
               </div>
@@ -164,11 +199,11 @@
             <div class="panel" id="panel-encomienda">
               <div class="form-grid">
                 <div class="form-group">
-                  <label class="field-label">Tamaño del paquete</label>
-                  <div class="pill-toggle" id="parcel-size">
-                    <button type="button" class="pill-option" data-size="small">Pequeño <span class="mono" style="opacity:.7;font-weight:400;">(&lt;2kg)</span></button>
-                    <button type="button" class="pill-option" data-size="medium">Mediano <span class="mono" style="opacity:.7;font-weight:400;">(2–8kg)</span></button>
-                    <button type="button" class="pill-option" data-size="large">Grande <span class="mono" style="opacity:.7;font-weight:400;">(8–20kg)</span></button>
+                  <label class="field-label" id="parcel-size-label">Tamaño del paquete</label>
+                  <div class="pill-toggle" id="parcel-size" role="group" aria-labelledby="parcel-size-label">
+                    <button type="button" class="pill-option" data-size="small" aria-pressed="false">Pequeño <span class="mono" style="opacity:.7;font-weight:400;">(&lt;2kg)</span></button>
+                    <button type="button" class="pill-option" data-size="medium" aria-pressed="false">Mediano <span class="mono" style="opacity:.7;font-weight:400;">(2–8kg)</span></button>
+                    <button type="button" class="pill-option" data-size="large" aria-pressed="false">Grande <span class="mono" style="opacity:.7;font-weight:400;">(8–20kg)</span></button>
                   </div>
                 </div>
 
@@ -186,14 +221,14 @@
                     <p class="field-hint" id="parcel-to-map-hint"></p>
                   </div>
                 </div>
-                <p class="field-hint">Marca ambos puntos en el mapa para sumar $0.55 por cada km entre recolección y entrega al precio base.</p>
+                <p class="field-hint">Marca ambos puntos en el mapa para sumar la distancia real de ruta entre recolección y entrega al precio base.</p>
 
                 <div class="form-group switch-row">
                   <div>
                     <div class="switch-label">Entrega el mismo día (express)</div>
                     <div class="switch-sub">Prioridad sobre otras encomiendas del día</div>
                   </div>
-                  <button type="button" class="switch" id="parcel-urgent" aria-pressed="false"></button>
+                  <button type="button" class="switch" id="parcel-urgent" aria-pressed="false" aria-label="Entrega el mismo día (express)"></button>
                 </div>
 
                 <div class="form-group switch-row">
@@ -201,7 +236,7 @@
                     <div class="switch-label">Contenido frágil</div>
                     <div class="switch-sub">Se transportará con cuidado adicional</div>
                   </div>
-                  <button type="button" class="switch" id="parcel-fragile" aria-pressed="false"></button>
+                  <button type="button" class="switch" id="parcel-fragile" aria-pressed="false" aria-label="Contenido frágil"></button>
                 </div>
 
                 <div class="form-group">
@@ -211,10 +246,12 @@
               </div>
 
               <div class="quote-box" id="quote-encomienda">
-                <div class="quote-info">
+                <div class="quote-info" aria-live="polite">
                   <span class="quote-route" id="quote-encomienda-route">Encomienda estimada</span>
                   <span class="quote-price" id="quote-encomienda-price">$0.00</span>
                   <span class="quote-eta" id="quote-encomienda-eta"></span>
+                  <span class="quote-route-badge" id="quote-encomienda-badge"></span>
+                  <button type="button" class="quote-route-link" id="route-link-encomienda" data-view-route="encomienda" hidden>Ver ruta en el mapa</button>
                   <span class="quote-disclaimer">Precio estimado, sujeto a confirmación por WhatsApp.</span>
                 </div>
                 <a class="btn btn-gold btn-wa btn-sm" id="wa-encomienda" href="#" target="_blank" rel="noopener">Reservar por WhatsApp</a>
@@ -234,7 +271,7 @@
           <div class="stop-card">
             <p class="stop-kicker">Parada 04 — Interdepartamental</p>
             <h3>¿Viajar a otro departamento?</h3>
-            <p class="lede">Los 14 departamentos de El Salvador, con los más visitados primero. Elige el tuyo y mira el precio y tiempo estimados.</p>
+            <p class="lede">Los 14 departamentos de El Salvador, con los más visitados primero. Elige el tuyo y mira el precio y tiempo estimados con la ruta real.</p>
             <button class="btn btn-outline-ink toggle-launch" data-toggle="panel-departamento" aria-expanded="false">
               Ver departamentos
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
@@ -243,11 +280,13 @@
             <div class="panel" id="panel-departamento">
               <div class="option-grid" id="list-departamento"></div>
               <div class="quote-box" id="quote-departamento">
-                <div class="quote-info">
+                <div class="quote-info" aria-live="polite">
                   <span class="quote-route" id="quote-departamento-route"></span>
                   <span class="quote-price" id="quote-departamento-price"></span>
                   <span class="quote-eta" id="quote-departamento-eta"></span>
-                  <span class="quote-disclaimer">Precio estimado a $0.55/km en línea recta desde tu ubicación. Se confirma por WhatsApp.</span>
+                  <span class="quote-route-badge" id="quote-departamento-badge"></span>
+                  <button type="button" class="quote-route-link" id="route-link-departamento" data-view-route="departamento" hidden>Ver ruta en el mapa</button>
+                  <span class="quote-disclaimer">Precio estimado según la distancia real de la ruta. Se confirma por WhatsApp.</span>
                 </div>
                 <a class="btn btn-gold btn-wa btn-sm" id="wa-departamento" href="#" target="_blank" rel="noopener">Reservar por WhatsApp</a>
               </div>
@@ -277,18 +316,20 @@
               <div class="search-field">
                 <input type="text" id="input-turismo" placeholder="Ej. playa, volcán, Suchitoto…" autocomplete="off">
               </div>
-              <div class="filter-chips" id="chips-turismo"></div>
+              <div class="filter-chips" id="chips-turismo" role="group" aria-label="Filtrar por categoría"></div>
               <div class="option-grid" id="list-turismo"></div>
               <div class="empty-state" id="empty-turismo">
                 <p>No encontramos ese destino con ese nombre.</p>
                 <button class="btn btn-outline-ink btn-sm" data-open-map="turismo">Elegir en el mapa</button>
               </div>
               <div class="quote-box" id="quote-turismo">
-                <div class="quote-info">
+                <div class="quote-info" aria-live="polite">
                   <span class="quote-route" id="quote-turismo-route"></span>
                   <span class="quote-price" id="quote-turismo-price"></span>
                   <span class="quote-eta" id="quote-turismo-eta"></span>
-                  <span class="quote-disclaimer">Precio estimado a $0.55/km en línea recta desde tu ubicación. Se confirma por WhatsApp.</span>
+                  <span class="quote-route-badge" id="quote-turismo-badge"></span>
+                  <button type="button" class="quote-route-link" id="route-link-turismo" data-view-route="turismo" hidden>Ver ruta en el mapa</button>
+                  <span class="quote-disclaimer">Precio estimado según la distancia real de la ruta. Se confirma por WhatsApp.</span>
                 </div>
                 <a class="btn btn-gold btn-wa btn-sm" id="wa-turismo" href="#" target="_blank" rel="noopener">Reservar por WhatsApp</a>
               </div>
@@ -301,10 +342,39 @@
     </div>
   </section>
 
+  <!-- ============ COBERTURA (mapa visual) ============ -->
+  <section class="section-pad coverage-section">
+    <div class="wrap">
+      <span class="eyebrow">Dónde te llevamos</span>
+      <h2 class="section-title">Cobertura en los 14 departamentos de El Salvador</h2>
+      <p class="section-lede">Del área metropolitana a cualquier rincón del país.</p>
+      <div id="coverage-map" class="coverage-map" aria-label="Mapa de cobertura de Movilidad 360 SV en El Salvador"></div>
+    </div>
+  </section>
+
+  <!-- ============ VEHÍCULOS ============ -->
+  <section class="section-pad vehicles-section">
+    <div class="wrap">
+      <span class="eyebrow">Nuestra flota</span>
+      <h2 class="section-title">Vehículos disponibles</h2>
+      <p class="section-lede">El equipo asigna el vehículo según tu servicio y te comparte la foto exacta del que te recogerá antes del viaje.</p>
+      <div id="vehicles-grid" class="vehicles-grid"></div>
+    </div>
+  </section>
+
+  <!-- ============ TESTIMONIOS ============ -->
+  <section class="section-pad testimonials-section">
+    <div class="wrap">
+      <span class="eyebrow">Confianza</span>
+      <h2 class="section-title">Lo que dicen quienes ya viajaron con nosotros</h2>
+      <div id="testimonials-grid" class="testimonials-grid"></div>
+    </div>
+  </section>
+
   <!-- ============ CTA FINAL ============ -->
   <section class="section-pad">
     <div class="cta-final">
-      <span class="eyebrow" style="color:var(--gold-300)">Movilidad 360 SV</span>
+      <span class="eyebrow" style="color:var(--green-300)">Movilidad 360 SV</span>
       <h2>Porque cada viaje tiene un destino, y nosotros hacemos que llegar sea más fácil.</h2>
       <p class="section-lede on-dark">Escríbenos y cotizamos tu viaje en minutos, sin filas ni complicaciones.</p>
       <a id="cta-wa" class="btn btn-gold btn-wa" href="#" target="_blank" rel="noopener">
@@ -357,14 +427,14 @@
   <svg viewBox="0 0 24 24"><path d="M17.5 14.4c-.3-.1-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.1-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.5-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1.1 2.8 1.2 3c.1.2 2.2 3.4 5.3 4.7.7.3 1.3.5 1.8.7.7.2 1.4.2 1.9.1.6-.1 1.7-.7 2-1.4.2-.7.2-1.2.1-1.4-.1-.1-.3-.2-.6-.3z"/><path d="M12 2C6.5 2 2 6.5 2 12c0 1.9.5 3.7 1.5 5.3L2 22l4.8-1.4C8.3 21.5 10.1 22 12 22c5.5 0 10-4.5 10-10S17.5 2 12 2zm0 18.2c-1.7 0-3.3-.5-4.7-1.3l-.3-.2-3 .8.8-2.9-.2-.3C3.7 15 3.2 13.5 3.2 12c0-4.8 3.9-8.8 8.8-8.8s8.8 3.9 8.8 8.8-3.9 8.8-8.8 8.8z"/></svg>
 </a>
 
-<!-- ============ MAP MODAL (Leaflet) ============ -->
+<!-- ============ MAP MODAL (Leaflet, carga diferida) ============ -->
 <div class="map-modal" id="mapModal">
-  <div class="map-modal-card">
+  <div class="map-modal-card" role="dialog" aria-modal="true" aria-labelledby="mapModalTitle">
     <div class="map-modal-head">
-      <h4>Elige tu destino en el mapa</h4>
+      <h4 id="mapModalTitle">Elige tu destino en el mapa</h4>
       <button class="map-modal-close" id="mapModalClose" aria-label="Cerrar mapa">&times;</button>
     </div>
-    <div id="leaflet-map"></div>
+    <div id="leaflet-map" aria-label="Mapa interactivo"></div>
     <div class="map-modal-foot">
       <p id="mapModalHint">Toca el mapa para colocar un pin en tu destino.</p>
       <button class="btn btn-gold btn-sm" id="mapModalConfirm" disabled>Usar este punto</button>
@@ -372,7 +442,6 @@
   </div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="js/data.js"></script>
 <script src="js/app.js"></script>
 </body>
