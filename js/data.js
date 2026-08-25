@@ -21,6 +21,10 @@ const CONFIG = {
   // ⚠️ REEMPLAZAR con el número real de viajes completados.
   tripsCompleted: 500,
   responseMinutes: 5,
+  // ⚠️ REEMPLAZAR: pega aquí el enlace a tu perfil de Google Business
+  // (ej. "https://g.page/r/....") cuando lo tengas. Mientras esté vacío
+  // ("") el botón de reseñas de Google no se muestra en el sitio.
+  googleReviewsUrl: "",
   pricing: {
     parcel: {
       small:  4.0,   // documentos, paquetes pequeños (<2kg)
@@ -178,5 +182,40 @@ const VEHICLES = [
     capacity: "Envíos y encomiendas",
     desc: "Para paquetes pequeños y medianos con entrega ágil.",
     icon: "moto",
+  },
+];
+
+/* ---------- Preguntas frecuentes ----------
+   ⚠️ Revisar/ajustar: algunas respuestas (ej. métodos de pago, seguro)
+   dependen de cómo operan realmente. Edítalas para que sean 100% exactas
+   antes de publicar. */
+const FAQS = [
+  {
+    q: "¿Cómo se calcula el precio de mi viaje?",
+    a: `El precio se calcula como distancia real de la ruta por carretera × $${CONFIG.ratePerKm}/km. Siempre es un estimado: el precio final se confirma por WhatsApp antes de tu viaje.`,
+  },
+  {
+    q: "¿Qué métodos de pago aceptan?",
+    a: "[Reemplazar: indica aquí si aceptan efectivo, transferencia, tarjeta, etc.]",
+  },
+  {
+    q: "¿Puedo cancelar mi reserva?",
+    a: "[Reemplazar: describe aquí tu política de cancelación, ej. tiempo mínimo de aviso, si hay cargo por cancelar tarde, etc.]",
+  },
+  {
+    q: "¿Los conductores hablan inglés?",
+    a: "[Reemplazar: indica si tus conductores pueden atender a turistas que no hablan español.]",
+  },
+  {
+    q: "¿El viaje tiene algún tipo de seguro?",
+    a: "[Reemplazar: describe aquí si el servicio cuenta con seguro para pasajeros y en qué consiste.]",
+  },
+  {
+    q: "¿Cuánto tardan en confirmar mi reserva?",
+    a: `Respondemos en un tiempo estimado de ~${CONFIG.responseMinutes} minutos por WhatsApp, en horario de atención.`,
+  },
+  {
+    q: "¿Puedo pedir un viaje para varios pasajeros o con mascota?",
+    a: "Sí. Al cotizar, indica el número de pasajeros y si llevas mascota — esa información se incluye automáticamente en tu mensaje de WhatsApp para que el equipo prepare el vehículo adecuado.",
   },
 ];
