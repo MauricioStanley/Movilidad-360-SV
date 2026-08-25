@@ -152,12 +152,46 @@
 
   /* ---------------- Ubicación del usuario ---------------- */
   let userLocation = null;
+  let userLocationPlaceName = null; // texto legible (reverse geocoding), si se pudo obtener
 
   function currentOrigin() {
     return userLocation || CONFIG.originFallback;
   }
   function originLabel() {
-    return userLocation ? "Tu ubicación actual" : CONFIG.originFallback.name;
+    if (userLocation) return userLocationPlaceName ? `Tu ubicación (${userLocationPlaceName})` : "Tu ubicación actual";
+    return CONFIG.originFallback.name;
+  }
+  function googleMapsLink(lat, lng) {
+    return `https://www.google.com/maps?q=${lat},${lng}`;
+  }
+  // Enlace de Google Maps al punto de origen, solo cuando el origen es la
+  // ubicación real del usuario (el punto de referencia fijo ya tiene nombre).
+  function originMapsLink() {
+    return userLocation ? googleMapsLink(userLocation.lat, userLocation.lng) : null;
+  }
+
+  // Convierte coordenadas en una referencia legible (colonia/calle) usando
+  // Nominatim (OpenStreetMap), gratuito y sin API key. Es un "mejor esfuerzo":
+  // si falla o tarda, simplemente no se agrega el nombre y se sigue usando
+  // el enlace de Google Maps como punto de referencia.
+  async function reverseGeocode(lat, lng) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`;
+      const res = await fetch(url, { signal: controller.signal, headers: { Accept: "application/json" } });
+      clearTimeout(timeoutId);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const a = data.address || {};
+      const place = a.neighbourhood || a.suburb || a.road || a.village || a.town || a.city_district;
+      const city = a.city || a.town || a.municipality;
+      const parts = [place, place !== city ? city : null].filter(Boolean);
+      return parts.length ? parts.join(", ") : null;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      return null;
+    }
   }
 
   function requestGeolocation(cb) {
@@ -172,9 +206,13 @@
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        userLocationPlaceName = null;
         if (statusEl) statusEl.textContent = "Ubicación activada ✓ Todas las cotizaciones se calculan desde tu posición actual.";
         if (bannerEl) bannerEl.classList.add("located");
         cb(true);
+        reverseGeocode(userLocation.lat, userLocation.lng).then((name) => {
+          if (name) userLocationPlaceName = name;
+        });
       },
       () => {
         if (statusEl) statusEl.textContent = "No pudimos acceder a tu ubicación. Usando San Salvador (Centro) como referencia — puedes intentar de nuevo.";
@@ -298,10 +336,13 @@
       turismo: "viaje turístico",
     };
 
+    const mapsLink = originMapsLink();
     const msg =
       `Hola *MOVILIDAD 360 SV* 👋\n\n` +
       `Quiero cotizar un *${serviceNames[prefix]}*:\n` +
-      `📍 Desde: ${originName}\n` +
+      `📍 Desde: ${originName}` +
+      (mapsLink ? ` — ${mapsLink}` : "") +
+      `\n` +
       `🎯 Hasta: ${destName}\n` +
       `📏 Distancia ${real ? "real por carretera" : "aproximada"}: ${distanceKm.toFixed(1)} km\n` +
       `💵 Precio estimado: ${formatMoney(price)}\n` +
