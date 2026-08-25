@@ -52,8 +52,8 @@
     return Math.max(5, Math.round((distanceKm / speed) * 60) + 6);
   }
 
-  function estimatePrice(distanceKm, tariff) {
-    return Math.max(tariff.min, tariff.base + tariff.perKm * distanceKm);
+  function estimatePrice(distanceKm) {
+    return distanceKm * CONFIG.ratePerKm;
   }
 
   function formatMoney(n) {
@@ -171,7 +171,7 @@
     const origin = currentOrigin();
     const distanceKm = haversineKm(origin.lat, origin.lng, place.lat, place.lng);
     const minutes = estimateMinutes(distanceKm);
-    const price = estimatePrice(distanceKm, CONFIG.pricing.local);
+    const price = estimatePrice(distanceKm);
     showQuote("movilizarte", { originName: originLabel(), destName: place.name, price, minutes, distanceKm });
   }
 
@@ -188,7 +188,7 @@
     $("#list-aeropuerto").innerHTML = withDist
       .map((a, i) => {
         const minutes = estimateMinutes(a.distanceKm);
-        const price = estimatePrice(a.distanceKm, CONFIG.pricing.airport);
+        const price = estimatePrice(a.distanceKm);
         return `
         <button type="button" class="option-card" data-idx="${i}">
           <div class="option-card-top">
@@ -217,7 +217,7 @@
     const origin = currentOrigin();
     const distanceKm = haversineKm(origin.lat, origin.lng, airport.lat, airport.lng);
     const minutes = estimateMinutes(distanceKm);
-    const price = estimatePrice(distanceKm, CONFIG.pricing.airport);
+    const price = estimatePrice(distanceKm);
     showQuote("aeropuerto", {
       originName: originLabel(),
       destName: airport.name,
@@ -231,7 +231,7 @@
   /* =====================================================================
      PARADA 3 — ¿Enviar una encomienda?
      ===================================================================== */
-  const parcelState = { size: null, urgent: false, fragile: false };
+  const parcelState = { size: null, urgent: false, fragile: false, fromPoint: null, toPoint: null };
   const parcelSizeLabels = {
     small: "Pequeño (<2kg)",
     medium: "Mediano (2–8kg)",
@@ -243,8 +243,18 @@
     let price = CONFIG.pricing.parcel[parcelState.size];
     if (parcelState.urgent) price += CONFIG.pricing.parcel.urgentSurcharge;
 
+    let distanceKm = null;
+    if (parcelState.fromPoint && parcelState.toPoint) {
+      distanceKm = haversineKm(
+        parcelState.fromPoint.lat, parcelState.fromPoint.lng,
+        parcelState.toPoint.lat, parcelState.toPoint.lng
+      );
+      price += estimatePrice(distanceKm);
+    }
+
     $("#quote-encomienda-route").textContent =
-      `Encomienda ${parcelSizeLabels[parcelState.size]}${parcelState.fragile ? " · frágil" : ""}`;
+      `Encomienda ${parcelSizeLabels[parcelState.size]}${parcelState.fragile ? " · frágil" : ""}` +
+      (distanceKm !== null ? ` · ${distanceKm.toFixed(1)} km` : "");
     $("#quote-encomienda-price").textContent = formatMoney(price);
     $("#quote-encomienda-eta").textContent = parcelState.urgent
       ? "Entrega estimada: mismo día"
@@ -263,10 +273,21 @@
       `⚠️ Frágil: ${parcelState.fragile ? "Sí" : "No"}\n` +
       `📍 Recolección: ${from}\n` +
       `🎯 Entrega: ${to}` +
+      (distanceKm !== null ? `\n📏 Distancia aprox: ${distanceKm.toFixed(1)} km` : "") +
       (notes ? `\n📝 Instrucciones: ${notes}` : "") +
       `\n💵 Precio estimado: ${formatMoney(price)}\n\n¿Podrían confirmar disponibilidad?`;
 
     $("#wa-encomienda").href = waLink(msg);
+  }
+
+  function selectParcelPoint(which, place) {
+    const inputId = which === "from" ? "#parcel-from" : "#parcel-to";
+    const hintId = which === "from" ? "#parcel-from-map-hint" : "#parcel-to-map-hint";
+    $(inputId).value = place.name;
+    $(hintId).textContent = "Punto marcado en el mapa ✓";
+    if (which === "from") parcelState.fromPoint = { lat: place.lat, lng: place.lng };
+    else parcelState.toPoint = { lat: place.lat, lng: place.lng };
+    updateParcelQuote();
   }
 
   function wireParcelForm() {
@@ -295,10 +316,19 @@
       updateParcelQuote();
     });
 
-    ["#parcel-from", "#parcel-to", "#parcel-notes"].forEach((sel) => {
-      $(sel).addEventListener("input", debounce(updateParcelQuote, 250));
+    $("#parcel-from").addEventListener("input", () => {
+      parcelState.fromPoint = null;
+      $("#parcel-from-map-hint").textContent = "";
+      debouncedParcelQuote();
     });
+    $("#parcel-to").addEventListener("input", () => {
+      parcelState.toPoint = null;
+      $("#parcel-to-map-hint").textContent = "";
+      debouncedParcelQuote();
+    });
+    $("#parcel-notes").addEventListener("input", debouncedParcelQuote);
   }
+  const debouncedParcelQuote = debounce(updateParcelQuote, 250);
 
   /* =====================================================================
      PARADA 4 — ¿Viajar a otro departamento?
@@ -308,7 +338,7 @@
     $("#list-departamento").innerHTML = DEPARTMENTS.map((d, i) => {
       const distanceKm = haversineKm(origin.lat, origin.lng, d.lat, d.lng);
       const minutes = estimateMinutes(distanceKm);
-      const price = estimatePrice(distanceKm, CONFIG.pricing.department);
+      const price = estimatePrice(distanceKm);
       return `
         <button type="button" class="option-card" data-idx="${i}">
           <div class="option-card-top">
@@ -336,7 +366,7 @@
     const origin = currentOrigin();
     const distanceKm = haversineKm(origin.lat, origin.lng, dept.lat, dept.lng);
     const minutes = estimateMinutes(distanceKm);
-    const price = estimatePrice(distanceKm, CONFIG.pricing.department);
+    const price = estimatePrice(distanceKm);
     showQuote("departamento", {
       originName: originLabel(),
       destName: `Departamento de ${dept.name}`,
@@ -394,7 +424,7 @@
       .map((p, i) => {
         const distanceKm = haversineKm(origin.lat, origin.lng, p.lat, p.lng);
         const minutes = estimateMinutes(distanceKm);
-        const price = estimatePrice(distanceKm, CONFIG.pricing.tourism);
+        const price = estimatePrice(distanceKm);
         return `
         <button type="button" class="option-card" data-idx="${i}">
           <div class="option-card-top">
@@ -423,7 +453,7 @@
     const origin = currentOrigin();
     const distanceKm = haversineKm(origin.lat, origin.lng, place.lat, place.lng);
     const minutes = estimateMinutes(distanceKm);
-    const price = estimatePrice(distanceKm, CONFIG.pricing.tourism);
+    const price = estimatePrice(distanceKm);
     showQuote("turismo", {
       originName: originLabel(),
       destName: place.name,
@@ -489,6 +519,8 @@
       };
       if (mapContext === "movilizarte") selectMovilizarteDestination(place);
       if (mapContext === "turismo") selectTourism(place);
+      if (mapContext === "parcel-from") selectParcelPoint("from", place);
+      if (mapContext === "parcel-to") selectParcelPoint("to", place);
       closeMapModal();
     });
   }
@@ -518,6 +550,15 @@
       const el = document.getElementById(id);
       if (el) el.href = waLink(genericMsg);
     });
+  }
+
+  function wireJoinUsLink() {
+    const el = document.getElementById("footer-join-us");
+    if (!el) return;
+    const msg =
+      `Hola *MOVILIDAD 360 SV* 👋\n\nMe interesa trabajar con ustedes. ` +
+      `¿Podrían darme más información sobre cómo unirme al equipo?`;
+    el.href = waLink(msg);
   }
 
   /* =====================================================================
@@ -606,5 +647,16 @@
         renderTourism();
       }, 180)
     );
+
+    // Trabaja con nosotros
+    wireJoinUsLink();
+
+    // Pedimos ubicación una sola vez al cargar, para que todas las
+    // cotizaciones (no solo aeropuerto) usen la posición real del usuario.
+    requestGeolocation(() => {
+      renderAirports();
+      renderDepartments();
+      renderTourism();
+    });
   });
 })();

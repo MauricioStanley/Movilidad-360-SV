@@ -100,6 +100,7 @@
                   <span class="quote-route" id="quote-movilizarte-route"></span>
                   <span class="quote-price" id="quote-movilizarte-price"></span>
                   <span class="quote-eta" id="quote-movilizarte-eta"></span>
+                  <span class="quote-disclaimer">Precio estimado a $0.55/km en línea recta desde tu ubicación. Se confirma por WhatsApp.</span>
                 </div>
                 <a class="btn btn-gold btn-wa btn-sm" id="wa-movilizarte" href="#" target="_blank" rel="noopener">Reservar por WhatsApp</a>
               </div>
@@ -133,6 +134,7 @@
                   <span class="quote-route" id="quote-aeropuerto-route"></span>
                   <span class="quote-price" id="quote-aeropuerto-price"></span>
                   <span class="quote-eta" id="quote-aeropuerto-eta"></span>
+                  <span class="quote-disclaimer">Precio estimado a $0.55/km en línea recta desde tu ubicación. Se confirma por WhatsApp.</span>
                 </div>
                 <a class="btn btn-gold btn-wa btn-sm" id="wa-aeropuerto" href="#" target="_blank" rel="noopener">Reservar por WhatsApp</a>
               </div>
@@ -172,12 +174,17 @@
                   <div class="form-group">
                     <label class="field-label" for="parcel-from">Punto de recolección</label>
                     <div class="search-field"><input type="text" id="parcel-from" placeholder="Dirección o referencia de recolección"></div>
+                    <button type="button" class="btn btn-outline-ink btn-sm" data-open-map="parcel-from" style="margin-top:0.5rem;">Marcar en el mapa</button>
+                    <p class="field-hint" id="parcel-from-map-hint"></p>
                   </div>
                   <div class="form-group">
                     <label class="field-label" for="parcel-to">Punto de entrega</label>
                     <div class="search-field"><input type="text" id="parcel-to" placeholder="Dirección o referencia de entrega"></div>
+                    <button type="button" class="btn btn-outline-ink btn-sm" data-open-map="parcel-to" style="margin-top:0.5rem;">Marcar en el mapa</button>
+                    <p class="field-hint" id="parcel-to-map-hint"></p>
                   </div>
                 </div>
+                <p class="field-hint">Marca ambos puntos en el mapa para sumar $0.55 por cada km entre recolección y entrega al precio base.</p>
 
                 <div class="form-group switch-row">
                   <div>
@@ -206,6 +213,7 @@
                   <span class="quote-route" id="quote-encomienda-route">Encomienda estimada</span>
                   <span class="quote-price" id="quote-encomienda-price">$0.00</span>
                   <span class="quote-eta" id="quote-encomienda-eta"></span>
+                  <span class="quote-disclaimer">Precio estimado, sujeto a confirmación por WhatsApp.</span>
                 </div>
                 <a class="btn btn-gold btn-wa btn-sm" id="wa-encomienda" href="#" target="_blank" rel="noopener">Reservar por WhatsApp</a>
               </div>
@@ -237,6 +245,7 @@
                   <span class="quote-route" id="quote-departamento-route"></span>
                   <span class="quote-price" id="quote-departamento-price"></span>
                   <span class="quote-eta" id="quote-departamento-eta"></span>
+                  <span class="quote-disclaimer">Precio estimado a $0.55/km en línea recta desde tu ubicación. Se confirma por WhatsApp.</span>
                 </div>
                 <a class="btn btn-gold btn-wa btn-sm" id="wa-departamento" href="#" target="_blank" rel="noopener">Reservar por WhatsApp</a>
               </div>
@@ -277,6 +286,7 @@
                   <span class="quote-route" id="quote-turismo-route"></span>
                   <span class="quote-price" id="quote-turismo-price"></span>
                   <span class="quote-eta" id="quote-turismo-eta"></span>
+                  <span class="quote-disclaimer">Precio estimado a $0.55/km en línea recta desde tu ubicación. Se confirma por WhatsApp.</span>
                 </div>
                 <a class="btn btn-gold btn-wa btn-sm" id="wa-turismo" href="#" target="_blank" rel="noopener">Reservar por WhatsApp</a>
               </div>
@@ -325,6 +335,12 @@
       <ul>
         <li><a id="footer-wa" href="#" target="_blank" rel="noopener">Escríbenos por WhatsApp</a></li>
         <li>El Salvador 🇸🇻</li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h5>Trabaja con nosotros</h5>
+      <ul>
+        <li><a id="footer-join-us" href="#" target="_blank" rel="noopener">Únete al equipo por WhatsApp</a></li>
       </ul>
     </div>
   </div>
