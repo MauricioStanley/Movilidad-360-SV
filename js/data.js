@@ -15,9 +15,12 @@ const CONFIG = {
   // Punto de referencia por defecto: Plaza Las Américas (El Salvador del Mundo),
   // usado como origen cuando el usuario no comparte su ubicación.
   originFallback: { name: "San Salvador (Centro)", lat: 13.6989, lng: -89.1914 },
-  // Tarifa única: precio estimado = distancia en línea recta (km) x ratePerKm.
+  // Tarifa única: precio estimado = distancia real de la ruta (km) x ratePerKm.
   // Es un estimado; el precio final se confirma por WhatsApp.
   ratePerKm: 0.55,
+  // ⚠️ REEMPLAZAR con el número real de viajes completados.
+  tripsCompleted: 500,
+  responseMinutes: 5,
   pricing: {
     parcel: {
       small:  4.0,   // documentos, paquetes pequeños (<2kg)
@@ -124,4 +127,56 @@ const TOURIST_PLACES = [
     desc: "Catedral Metropolitana, Palacio Nacional y Teatro Nacional." },
   { name: "Golfo de Fonseca", dept: "La Unión", category: "Playa", lat: 13.2028, lng: -87.8083,
     desc: "Islas, manglares y playas tranquilas en el oriente del país." },
+];
+
+/* ---------- Testimonios ----------
+   ⚠️ REEMPLAZAR: estos son testimonios de ejemplo. Antes de publicar,
+   cambia el nombre y el texto por testimonios reales de tus clientes. */
+const TESTIMONIALS = [
+  {
+    name: "[Reemplazar: nombre del cliente]",
+    service: "Viaje local",
+    quote: "[Reemplazar: escribe aquí un testimonio real de un cliente satisfecho con el servicio de viaje local.]",
+  },
+  {
+    name: "[Reemplazar: nombre del cliente]",
+    service: "Traslado al aeropuerto",
+    quote: "[Reemplazar: escribe aquí un testimonio real sobre un traslado al aeropuerto.]",
+  },
+  {
+    name: "[Reemplazar: nombre del cliente]",
+    service: "Turismo",
+    quote: "[Reemplazar: escribe aquí un testimonio real de un viaje turístico con Movilidad 360 SV.]",
+  },
+];
+
+/* ---------- Vehículos disponibles ----------
+   Ilustrativo: el cliente no elige el vehículo específico, solo el tipo
+   que probablemente lo recogerá. La foto del vehículo asignado se envía
+   por WhatsApp antes del viaje. */
+const VEHICLES = [
+  {
+    type: "Sedán",
+    capacity: "Hasta 4 pasajeros",
+    desc: "Ideal para viajes locales y traslados individuales o en pareja.",
+    icon: "sedan",
+  },
+  {
+    type: "SUV / Camioneta",
+    capacity: "Hasta 6 pasajeros",
+    desc: "Más espacio para equipaje, grupos familiares o viajes al aeropuerto.",
+    icon: "suv",
+  },
+  {
+    type: "Van / Microbús",
+    capacity: "Hasta 12 pasajeros",
+    desc: "Perfecta para grupos grandes, tours y viajes interdepartamentales.",
+    icon: "van",
+  },
+  {
+    type: "Motocarga",
+    capacity: "Envíos y encomiendas",
+    desc: "Para paquetes pequeños y medianos con entrega ágil.",
+    icon: "moto",
+  },
 ];
