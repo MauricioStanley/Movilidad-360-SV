@@ -83,6 +83,7 @@
 
   function requestGeolocation(cb) {
     const statusEl = $("#geo-status");
+    const bannerEl = $(".geo-banner");
     if (!navigator.geolocation) {
       if (statusEl) statusEl.textContent = "Tu navegador no permite compartir ubicación. Usando San Salvador (Centro) como referencia.";
       cb(false);
@@ -92,11 +93,13 @@
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        if (statusEl) statusEl.textContent = "Ubicación activada. Calculando desde tu posición actual.";
+        if (statusEl) statusEl.textContent = "Ubicación activada ✓ Todas las cotizaciones se calculan desde tu posición actual.";
+        if (bannerEl) bannerEl.classList.add("located");
         cb(true);
       },
       () => {
-        if (statusEl) statusEl.textContent = "No pudimos acceder a tu ubicación. Usando San Salvador (Centro) como referencia.";
+        if (statusEl) statusEl.textContent = "No pudimos acceder a tu ubicación. Usando San Salvador (Centro) como referencia — puedes intentar de nuevo.";
+        if (bannerEl) bannerEl.classList.remove("located");
         cb(false);
       },
       { timeout: 8000, maximumAge: 60000 }
@@ -166,7 +169,10 @@
     });
   }
 
+  let lastMovilizarteSelection = null;
+
   function selectMovilizarteDestination(place) {
+    lastMovilizarteSelection = place;
     $("#input-movilizarte").value = place.name;
     const origin = currentOrigin();
     const distanceKm = haversineKm(origin.lat, origin.lng, place.lat, place.lng);
@@ -213,7 +219,10 @@
     });
   }
 
+  let lastAirportSelection = null;
+
   function selectAirport(airport) {
+    lastAirportSelection = airport;
     const origin = currentOrigin();
     const distanceKm = haversineKm(origin.lat, origin.lng, airport.lat, airport.lng);
     const minutes = estimateMinutes(distanceKm);
@@ -362,7 +371,10 @@
     });
   }
 
+  let lastDepartmentSelection = null;
+
   function selectDepartment(dept) {
+    lastDepartmentSelection = dept;
     const origin = currentOrigin();
     const distanceKm = haversineKm(origin.lat, origin.lng, dept.lat, dept.lng);
     const minutes = estimateMinutes(distanceKm);
@@ -449,7 +461,10 @@
     });
   }
 
+  let lastTourismSelection = null;
+
   function selectTourism(place) {
+    lastTourismSelection = place;
     const origin = currentOrigin();
     const distanceKm = haversineKm(origin.lat, origin.lng, place.lat, place.lng);
     const minutes = estimateMinutes(distanceKm);
@@ -562,6 +577,19 @@
   }
 
   /* =====================================================================
+     Recalcular todo cuando cambia el origen (nueva ubicación)
+     ===================================================================== */
+  function refreshAllQuotesForNewOrigin() {
+    renderAirports();
+    renderDepartments();
+    renderTourism();
+    if (lastMovilizarteSelection) selectMovilizarteDestination(lastMovilizarteSelection);
+    if (lastAirportSelection) selectAirport(lastAirportSelection);
+    if (lastDepartmentSelection) selectDepartment(lastDepartmentSelection);
+    if (lastTourismSelection) selectTourism(lastTourismSelection);
+  }
+
+  /* =====================================================================
      Efecto de "ruta" al hacer scroll (línea + pines)
      ===================================================================== */
   function wireJourneyScrollFx() {
@@ -624,11 +652,7 @@
     // Parada 2
     renderAirports();
     $("#btn-locate").addEventListener("click", () => {
-      requestGeolocation(() => {
-        renderAirports();
-        renderDepartments();
-        renderTourism();
-      });
+      requestGeolocation(refreshAllQuotesForNewOrigin);
     });
 
     // Parada 3
@@ -653,10 +677,6 @@
 
     // Pedimos ubicación una sola vez al cargar, para que todas las
     // cotizaciones (no solo aeropuerto) usen la posición real del usuario.
-    requestGeolocation(() => {
-      renderAirports();
-      renderDepartments();
-      renderTourism();
-    });
+    requestGeolocation(refreshAllQuotesForNewOrigin);
   });
 })();
