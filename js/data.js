@@ -15,16 +15,14 @@ const CONFIG = {
   // Punto de referencia por defecto: Plaza Las Américas (El Salvador del Mundo),
   // usado como origen cuando el usuario no comparte su ubicación.
   originFallback: { name: "San Salvador (Centro)", lat: 13.6989, lng: -89.1914 },
+  // Tarifa única: precio estimado = distancia en línea recta (km) x ratePerKm.
+  // Es un estimado; el precio final se confirma por WhatsApp.
+  ratePerKm: 0.55,
   pricing: {
-    local:      { base: 2.5, perKm: 0.65, min: 3.0 },   // viajes dentro del área metropolitana
-    airport:    { base: 8.0, perKm: 0.55, min: 12.0 },  // traslados a aeropuerto
-    department: { base: 6.0, perKm: 0.42, min: 10.0 },  // viajes interdepartamentales
-    tourism:    { base: 10.0, perKm: 0.48, min: 15.0 }, // viajes a destinos turísticos
     parcel: {
       small:  4.0,   // documentos, paquetes pequeños (<2kg)
       medium: 7.0,   // caja mediana (2-8kg)
       large:  12.0,  // caja grande / voluminoso (8-20kg)
-      perKmExtra: 0.30,
       urgentSurcharge: 5.0, // recargo por entrega el mismo día / express
     },
   },
