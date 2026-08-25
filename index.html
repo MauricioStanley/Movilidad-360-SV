@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="es-SV">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Movilidad 360 SV — Tu destino está más cerca de lo que te imaginas</title>
+<meta name="description" content="Movilidad 360 SV: cotiza y reserva viajes locales, traslados al aeropuerto, envío de encomiendas, viajes a cualquier departamento y a los mejores destinos turísticos de El Salvador.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%230d1a33'/%3E%3Cpath d='M20 60 L50 30 L80 60' stroke='%23e0993a' stroke-width='8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+</head>
+<body>
+
+<!-- ============ HEADER ============ -->
+<header class="site-header">
+  <div class="wrap">
+    <a href="#top" class="brand">
+      <span class="brand-mark"><span>360</span></span>
+      <span class="brand-word">Movilidad 360 SV<small>El Salvador</small></span>
+    </a>
+    <div class="header-actions">
+      <a href="#paradas" class="btn btn-ghost btn-sm">Ver servicios</a>
+      <a id="header-wa" class="btn btn-gold btn-sm btn-wa" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.5 14.4c-.3-.1-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.1-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.5-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1.1 2.8 1.2 3c.1.2 2.2 3.4 5.3 4.7.7.3 1.3.5 1.8.7.7.2 1.4.2 1.9.1.6-.1 1.7-.7 2-1.4.2-.7.2-1.2.1-1.4-.1-.1-.3-.2-.6-.3z"/><path d="M12 2C6.5 2 2 6.5 2 12c0 1.9.5 3.7 1.5 5.3L2 22l4.8-1.4C8.3 21.5 10.1 22 12 22c5.5 0 10-4.5 10-10S17.5 2 12 2zm0 18.2c-1.7 0-3.3-.5-4.7-1.3l-.3-.2-3 .8.8-2.9-.2-.3C3.7 15 3.2 13.5 3.2 12c0-4.8 3.9-8.8 8.8-8.8s8.8 3.9 8.8 8.8-3.9 8.8-8.8 8.8z"/></svg>
+        Reservar
+      </a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <svg class="hero-road" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <path d="M -100 850 C 250 650, 150 450, 500 380 S 950 250, 700 -50" stroke="#e0993a" stroke-width="3" fill="none" stroke-dasharray="2 22" stroke-linecap="round" opacity="0.55"/>
+      <path d="M -100 950 C 350 780, 250 520, 620 460 S 1100 300, 900 -50" stroke="#2f9c98" stroke-width="2" fill="none" stroke-dasharray="1 18" stroke-linecap="round" opacity="0.4"/>
+      <circle cx="500" cy="380" r="4" fill="#eab35c"/>
+      <circle cx="700" cy="150" r="3" fill="#55b8b6"/>
+    </svg>
+    <div class="wrap hero-inner">
+      <span class="hero-eyebrow">Movilidad · Encomiendas · Turismo en El Salvador</span>
+      <h1>Tu destino está <em>más cerca</em> de lo que te imaginas.</h1>
+      <p class="hero-sub">Nosotros te llevamos. Tú disfruta del camino. Cotiza tu viaje, tu encomienda o tu próxima escapada en segundos, y reserva directo por WhatsApp.</p>
+      <div class="hero-cta">
+        <a href="#paradas" class="btn btn-gold">Cotizar un viaje</a>
+        <a id="hero-wa" class="btn btn-ghost btn-wa" href="#" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.5 14.4c-.3-.1-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.1-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.5-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1.1 2.8 1.2 3c.1.2 2.2 3.4 5.3 4.7.7.3 1.3.5 1.8.7.7.2 1.4.2 1.9.1.6-.1 1.7-.7 2-1.4.2-.7.2-1.2.1-1.4-.1-.1-.3-.2-.6-.3z"/><path d="M12 2C6.5 2 2 6.5 2 12c0 1.9.5 3.7 1.5 5.3L2 22l4.8-1.4C8.3 21.5 10.1 22 12 22c5.5 0 10-4.5 10-10S17.5 2 12 2zm0 18.2c-1.7 0-3.3-.5-4.7-1.3l-.3-.2-3 .8.8-2.9-.2-.3C3.7 15 3.2 13.5 3.2 12c0-4.8 3.9-8.8 8.8-8.8s8.8 3.9 8.8 8.8-3.9 8.8-8.8 8.8z"/></svg>
+          Reserva tu viaje con MOVILIDAD 360 SV
+        </a>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><b>5</b><span>formas de moverte</span></div>
+        <div class="hero-stat"><b>14</b><span>departamentos cubiertos</span></div>
+        <div class="hero-stat"><b>100%</b><span>cotización al instante y negociable</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ JOURNEY / PARADAS ============ -->
+  <section class="journey" id="paradas">
+    <div class="journey-head wrap">
+      <span class="eyebrow">Tu ruta con nosotros</span>
+      <h2 class="section-title">Cinco formas de llegar a donde vas</h2>
+      <p class="section-lede">Elige una parada, cuéntanos hacia dónde vas y te enviamos la cotización directo a WhatsApp para confirmar tu reserva.</p>
+    </div>
+
+    <div class="spine-track" aria-hidden="true"></div>
+    <div class="spine-progress" id="spineProgress" aria-hidden="true"></div>
+
+    <div class="wrap">
+
+      <!-- PARADA 1: Movilizarte -->
+      <article class="stop" id="stop-movilizarte" data-stop>
+        <div class="stop-pin" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14l-1.5-6.5a2 2 0 0 0-2-1.5H8.5a2 2 0 0 0-2 1.5L5 17Z"/><circle cx="8" cy="17" r="1.6"/><circle cx="16" cy="17" r="1.6"/><path d="M7 10l1-3h8l1 3"/></svg>
+        </div>
+        <div class="stop-body">
+          <div class="stop-card">
+            <p class="stop-kicker">Parada 01 — Viaje local</p>
+            <h3>¿Necesitas movilizarte?</h3>
+            <p class="lede">Un viaje dentro del área metropolitana, a tu ritmo. Dinos a dónde vas y te mostramos una cotización estimada al momento.</p>
+            <button class="btn btn-outline-ink toggle-launch" data-toggle="panel-movilizarte" aria-expanded="false">
+              Buscar destino
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+
+            <div class="panel" id="panel-movilizarte">
+              <label class="field-label" for="input-movilizarte">¿A dónde te quieres dirigir?</label>
+              <div class="search-field">
+                <input type="text" id="input-movilizarte" placeholder="Escribe un lugar, centro comercial, universidad…" autocomplete="off">
+              </div>
+              <p class="field-hint">Recomendados cerca de ti</p>
+              <div class="suggestion-list" id="list-movilizarte"></div>
+              <div class="empty-state" id="empty-movilizarte">
+                <p>No encontramos esa ubicación con ese nombre.</p>
+                <button class="btn btn-outline-ink btn-sm" data-open-map="movilizarte">Elegir en el mapa</button>
+              </div>
+              <div class="quote-box" id="quote-movilizarte">
+                <div class="quote-info">
+                  <span class="quote-route" id="quote-movilizarte-route"></span>
+                  <span class="quote-price" id="quote-movilizarte-price"></span>
+                  <span class="quote-eta" id="quote-movilizarte-eta"></span>
+                </div>
+                <a class="btn btn-gold btn-wa btn-sm" id="wa-movilizarte" href="#" target="_blank" rel="noopener">Reservar por WhatsApp</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="stop-spacer"></div>
+      </article>
+
+      <!-- PARADA 2: Aeropuerto -->
+      <article class="stop" id="stop-aeropuerto" data-stop>
+        <div class="stop-pin" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 21l1.5-5 1.5 5h-3Z"/><path d="M12 3l8 5-3 2-6-1.7L5 10 2 8l8-5Z"/><path d="M9 12.5L4 15v2l5-1.2"/><path d="M15 12.5l5 2.5v2l-5-1.2"/></svg>
+        </div>
+        <div class="stop-body">
+          <div class="stop-card">
+            <p class="stop-kicker">Parada 02 — Traslado aéreo</p>
+            <h3>¿Un viaje al aeropuerto?</h3>
+            <p class="lede">Detectamos el aeropuerto más cercano según tu ubicación. Elige a cuál quieres ir y te damos un tiempo estimado de llegada.</p>
+            <button class="btn btn-outline-ink toggle-launch" data-toggle="panel-aeropuerto" aria-expanded="false">
+              Ver aeropuertos cercanos
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+
+            <div class="panel" id="panel-aeropuerto">
+              <p class="field-hint" id="geo-status">Activa tu ubicación para calcular el tiempo estimado de llegada con mayor precisión.</p>
+              <button class="btn btn-outline-ink btn-sm" id="btn-locate" style="margin-top:0.6rem;">Usar mi ubicación</button>
+              <div class="option-grid" id="list-aeropuerto"></div>
+              <div class="quote-box" id="quote-aeropuerto">
+                <div class="quote-info">
+                  <span class="quote-route" id="quote-aeropuerto-route"></span>
+                  <span class="quote-price" id="quote-aeropuerto-price"></span>
+                  <span class="quote-eta" id="quote-aeropuerto-eta"></span>
+                </div>
+                <a class="btn btn-gold btn-wa btn-sm" id="wa-aeropuerto" href="#" target="_blank" rel="noopener">Reservar por WhatsApp</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="stop-spacer"></div>
+      </article>
+
+      <!-- PARADA 3: Encomienda -->
+      <article class="stop" id="stop-encomienda" data-stop>
+        <div class="stop-pin" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5 9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>
+        </div>
+        <div class="stop-body">
+          <div class="stop-card">
+            <p class="stop-kicker">Parada 03 — Encomiendas</p>
+            <h3>¿Enviar una encomienda?</h3>
+            <p class="lede">Documentos, regalos o paquetes: cuéntanos el tamaño, la urgencia y las direcciones, y armamos tu cotización.</p>
+            <button class="btn btn-outline-ink toggle-launch" data-toggle="panel-encomienda" aria-expanded="false">
+              Cotizar encomienda
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+
+            <div class="panel" id="panel-encomienda">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="field-label">Tamaño del paquete</label>
+                  <div class="pill-toggle" id="parcel-size">
+                    <button type="button" class="pill-option" data-size="small">Pequeño <span class="mono" style="opacity:.7;font-weight:400;">(&lt;2kg)</span></button>
+                    <button type="button" class="pill-option" data-size="medium">Mediano <span class="mono" style="opacity:.7;font-weight:400;">(2–8kg)</span></button>
+                    <button type="button" class="pill-option" data-size="large">Grande <span class="mono" style="opacity:.7;font-weight:400;">(8–20kg)</span></button>
+                  </div>
+                </div>
+
+                <div class="form-grid two-col">
+                  <div class="form-group">
+                    <label class="field-label" for="parcel-from">Punto de recolección</label>
+                    <div class="search-field"><input type="text" id="parcel-from" placeholder="Dirección o referencia de recolección"></div>
+                  </div>
+                  <div class="form-group">
+                    <label class="field-label" for="parcel-to">Punto de entrega</label>
+                    <div class="search-field"><input type="text" id="parcel-to" placeholder="Dirección o referencia de entrega"></div>
+                  </div>
+                </div>
+
+                <div class="form-group switch-row">
+                  <div>
+                    <div class="switch-label">Entrega el mismo día (express)</div>
+                    <div class="switch-sub">Prioridad sobre otras encomiendas del día</div>
+                  </div>
+                  <button type="button" class="switch" id="parcel-urgent" aria-pressed="false"></button>
+                </div>
+
+                <div class="form-group switch-row">
+                  <div>
+                    <div class="switch-label">Contenido fragil</div>
+                    <div class="switch-sub">Se transportará con cuidado adicional</div>
+                  </div>
+                  <button type="button" class="switch" id="parcel-fragile" aria-pressed="false"></button>
+                </div>
+
+                <div class="form-group">
+                  <label class="field-label" for="parcel-notes">Instrucciones para el mensajero (opcional)</label>
+                  <textarea id="parcel-notes" placeholder="Ej. Preguntar por Ana en recepción, tocar el portón azul, entregar solo al destinatario…"></textarea>
+                </div>
+              </div>
+
+              <div class="quote-box" id="quote-encomienda">
+                <div class="quote-info">
+                  <span class="quote-route" id="quote-encomienda-route">Encomienda estimada</span>
+                  <span class="quote-price" id="quote-encomienda-price">$0.00</span>
+                  <span class="quote-eta" id="quote-encomienda-eta"></span>
+                </div>
+                <a class="btn btn-gold btn-wa btn-sm" id="wa-encomienda" href="#" target="_blank" rel="noopener">Reservar por WhatsApp</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="stop-spacer"></div>
+      </article>
+
+      <!-- PARADA 4: Departamento -->
+      <article class="stop" id="stop-departamento" data-stop>
+        <div class="stop-pin" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20l-6-2V4l6 2 6-2 6 2v14l-6-2-6 2Z"/><path d="M9 6v14M15 4v14"/></svg>
+        </div>
+        <div class="stop-body">
+          <div class="stop-card">
+            <p class="stop-kicker">Parada 04 — Interdepartamental</p>
+            <h3>¿Viajar a otro departamento?</h3>
+            <p class="lede">Los 14 departamentos de El Salvador, con los más visitados primero. Elige el tuyo y mira el precio y tiempo estimados.</p>
+            <button class="btn btn-outline-ink toggle-launch" data-toggle="panel-departamento" aria-expanded="false">
+              Ver departamentos
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+
+            <div class="panel" id="panel-departamento">
+              <div class="option-grid" id="list-departamento"></div>
+              <div class="quote-box" id="quote-departamento">
+                <div class="quote-info">
+                  <span class="quote-route" id="quote-departamento-route"></span>
+                  <span class="quote-price" id="quote-departamento-price"></span>
+                  <span class="quote-eta" id="quote-departamento-eta"></span>
+                </div>
+                <a class="btn btn-gold btn-wa btn-sm" id="wa-departamento" href="#" target="_blank" rel="noopener">Reservar por WhatsApp</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="stop-spacer"></div>
+      </article>
+
+      <!-- PARADA 5: Turismo -->
+      <article class="stop" id="stop-turismo" data-stop>
+        <div class="stop-pin" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5 5-2Z"/></svg>
+        </div>
+        <div class="stop-body">
+          <div class="stop-card">
+            <p class="stop-kicker">Parada 05 — Turismo</p>
+            <h3>¿Conocer los mejores lugares de El Salvador?</h3>
+            <p class="lede">Playas, volcanes, pueblos coloridos y lagunas. Busca un destino o explóralos todos por categoría.</p>
+            <button class="btn btn-outline-ink toggle-launch" data-toggle="panel-turismo" aria-expanded="false">
+              Explorar destinos
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+
+            <div class="panel" id="panel-turismo">
+              <label class="field-label" for="input-turismo">Busca un destino turístico</label>
+              <div class="search-field">
+                <input type="text" id="input-turismo" placeholder="Ej. playa, volcán, Suchitoto…" autocomplete="off">
+              </div>
+              <div class="filter-chips" id="chips-turismo"></div>
+              <div class="option-grid" id="list-turismo"></div>
+              <div class="empty-state" id="empty-turismo">
+                <p>No encontramos ese destino con ese nombre.</p>
+                <button class="btn btn-outline-ink btn-sm" data-open-map="turismo">Elegir en el mapa</button>
+              </div>
+              <div class="quote-box" id="quote-turismo">
+                <div class="quote-info">
+                  <span class="quote-route" id="quote-turismo-route"></span>
+                  <span class="quote-price" id="quote-turismo-price"></span>
+                  <span class="quote-eta" id="quote-turismo-eta"></span>
+                </div>
+                <a class="btn btn-gold btn-wa btn-sm" id="wa-turismo" href="#" target="_blank" rel="noopener">Reservar por WhatsApp</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="stop-spacer"></div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ CTA FINAL ============ -->
+  <section class="section-pad">
+    <div class="cta-final">
+      <span class="eyebrow" style="color:var(--gold-300)">Movilidad 360 SV</span>
+      <h2>Porque cada viaje tiene un destino, y nosotros hacemos que llegar sea más fácil.</h2>
+      <p class="section-lede on-dark">Escríbenos y cotizamos tu viaje en minutos, sin filas ni complicaciones.</p>
+      <a id="cta-wa" class="btn btn-gold btn-wa" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.5 14.4c-.3-.1-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.1-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.5-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1.1 2.8 1.2 3c.1.2 2.2 3.4 5.3 4.7.7.3 1.3.5 1.8.7.7.2 1.4.2 1.9.1.6-.1 1.7-.7 2-1.4.2-.7.2-1.2.1-1.4-.1-.1-.3-.2-.6-.3z"/><path d="M12 2C6.5 2 2 6.5 2 12c0 1.9.5 3.7 1.5 5.3L2 22l4.8-1.4C8.3 21.5 10.1 22 12 22c5.5 0 10-4.5 10-10S17.5 2 12 2zm0 18.2c-1.7 0-3.3-.5-4.7-1.3l-.3-.2-3 .8.8-2.9-.2-.3C3.7 15 3.2 13.5 3.2 12c0-4.8 3.9-8.8 8.8-8.8s8.8 3.9 8.8 8.8-3.9 8.8-8.8 8.8z"/></svg>
+        Reserva tu viaje con MOVILIDAD 360 SV
+      </a>
+    </div>
+  </section>
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div class="footer-brand">
+      <a href="#top" class="brand"><span class="brand-mark"><span>360</span></span><span class="brand-word">Movilidad 360 SV</span></a>
+      <p class="footer-tagline">"Nosotros te llevamos. Tú disfruta del camino."</p>
+    </div>
+    <div class="footer-col">
+      <h5>Servicios</h5>
+      <ul>
+        <li><a href="#stop-movilizarte">Viaje local</a></li>
+        <li><a href="#stop-aeropuerto">Traslado al aeropuerto</a></li>
+        <li><a href="#stop-encomienda">Envío de encomiendas</a></li>
+        <li><a href="#stop-departamento">Viajes interdepartamentales</a></li>
+        <li><a href="#stop-turismo">Turismo en El Salvador</a></li>
+      </ul>
+    </div>
+    <div class="footer-col">
+      <h5>Contacto</h5>
+      <ul>
+        <li><a id="footer-wa" href="#" target="_blank" rel="noopener">Escríbenos por WhatsApp</a></li>
+        <li>El Salvador 🇸🇻</li>
+      </ul>
+    </div>
+  </div>
+  <div class="wrap footer-bottom">
+    <span>© <span id="year"></span> Movilidad 360 SV — Todos los derechos reservados.</span>
+    <span>Precios mostrados son estimados y sujetos a confirmación por WhatsApp.</span>
+  </div>
+</footer>
+
+<!-- ============ WHATSAPP FLOAT ============ -->
+<a id="float-wa" class="wa-float" href="#" target="_blank" rel="noopener" aria-label="Escribir por WhatsApp">
+  <svg viewBox="0 0 24 24"><path d="M17.5 14.4c-.3-.1-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.1-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.5-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1.1 2.8 1.2 3c.1.2 2.2 3.4 5.3 4.7.7.3 1.3.5 1.8.7.7.2 1.4.2 1.9.1.6-.1 1.7-.7 2-1.4.2-.7.2-1.2.1-1.4-.1-.1-.3-.2-.6-.3z"/><path d="M12 2C6.5 2 2 6.5 2 12c0 1.9.5 3.7 1.5 5.3L2 22l4.8-1.4C8.3 21.5 10.1 22 12 22c5.5 0 10-4.5 10-10S17.5 2 12 2zm0 18.2c-1.7 0-3.3-.5-4.7-1.3l-.3-.2-3 .8.8-2.9-.2-.3C3.7 15 3.2 13.5 3.2 12c0-4.8 3.9-8.8 8.8-8.8s8.8 3.9 8.8 8.8-3.9 8.8-8.8 8.8z"/></svg>
+</a>
+
+<!-- ============ MAP MODAL (Leaflet) ============ -->
+<div class="map-modal" id="mapModal">
+  <div class="map-modal-card">
+    <div class="map-modal-head">
+      <h4>Elige tu destino en el mapa</h4>
+      <button class="map-modal-close" id="mapModalClose" aria-label="Cerrar mapa">&times;</button>
+    </div>
+    <div id="leaflet-map"></div>
+    <div class="map-modal-foot">
+      <p id="mapModalHint">Toca el mapa para colocar un pin en tu destino.</p>
+      <button class="btn btn-gold btn-sm" id="mapModalConfirm" disabled>Usar este punto</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
