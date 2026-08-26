@@ -25,6 +25,11 @@ const CONFIG = {
   // (ej. "https://g.page/r/....") cuando lo tengas. Mientras esté vacío
   // ("") el botón de reseñas de Google no se muestra en el sitio.
   googleReviewsUrl: "",
+  // Métodos de pago que se ofrecen al cliente al cotizar.
+  paymentMethods: ["Efectivo", "Transferencia"],
+  // Política de cancelación: si el viaje cuesta más de freeThresholdUsd,
+  // se cobra feePercent% por cancelar; si cuesta igual o menos, es gratis.
+  cancellation: { freeThresholdUsd: 10, feePercent: 15 },
   pricing: {
     parcel: {
       small:  4.0,   // documentos, paquetes pequeños (<2kg)
@@ -157,31 +162,65 @@ const TESTIMONIALS = [
 /* ---------- Vehículos disponibles ----------
    Ilustrativo: el cliente no elige el vehículo específico, solo el tipo
    que probablemente lo recogerá. La foto del vehículo asignado se envía
-   por WhatsApp antes del viaje. */
+   por WhatsApp antes del viaje.
+   ⚠️ REEMPLAZAR: cuando tengan fotos reales de los vehículos, agreguen
+   un campo "photo": "ruta/a/la/foto.jpg" en cada objeto — la tarjeta lo
+   usará automáticamente en vez del ícono. */
 const VEHICLES = [
   {
     type: "Sedán",
     capacity: "Hasta 4 pasajeros",
     desc: "Ideal para viajes locales y traslados individuales o en pareja.",
     icon: "sedan",
+    photo: null,
   },
   {
-    type: "SUV / Camioneta",
+    type: "Camioneta",
     capacity: "Hasta 6 pasajeros",
     desc: "Más espacio para equipaje, grupos familiares o viajes al aeropuerto.",
     icon: "suv",
+    photo: null,
   },
   {
-    type: "Van / Microbús",
+    type: "Microbús",
     capacity: "Hasta 12 pasajeros",
     desc: "Perfecta para grupos grandes, tours y viajes interdepartamentales.",
     icon: "van",
+    photo: null,
   },
   {
-    type: "Motocarga",
-    capacity: "Envíos y encomiendas",
-    desc: "Para paquetes pequeños y medianos con entrega ágil.",
-    icon: "moto",
+    type: "Pick up",
+    capacity: "Mudanzas y carga",
+    desc: "Para mudanzas pequeñas, muebles y carga voluminosa.",
+    icon: "pickup",
+    photo: null,
+  },
+];
+
+/* ---------- Rutas turísticas sugeridas ----------
+   Combinan varios destinos de TOURIST_PLACES (por nombre) en un solo
+   recorrido sugerido. La distancia/tiempo/precio se calculan sumando
+   cada tramo real (origen → parada 1 → parada 2 → ...). */
+const TOURIST_ROUTES = [
+  {
+    name: "Ruta de las Flores completa",
+    desc: "Un recorrido por los pueblos más coloridos de Occidente: café, murales y feria gastronómica.",
+    stops: ["Juayúa", "Apaneca", "Concepción de Ataco"],
+  },
+  {
+    name: "Volcanes y lago de Santa Ana",
+    desc: "Naturaleza y miradores en un solo día: el volcán más alto del país y un lago de aguas turquesa.",
+    stops: ["Cerro Verde", "Volcán de Santa Ana", "Lago de Coatepeque"],
+  },
+  {
+    name: "Playas del Bálsamo",
+    desc: "Surf, atardeceres y ambiente de playa a menos de una hora del área metropolitana.",
+    stops: ["El Tunco", "El Zonte"],
+  },
+  {
+    name: "Historia y arqueología",
+    desc: "Un recorrido por el pasado maya y colonial de El Salvador.",
+    stops: ["Joya de Cerén", "Ruinas de San Andrés", "Centro Histórico de San Salvador"],
   },
 ];
 
@@ -196,11 +235,11 @@ const FAQS = [
   },
   {
     q: "¿Qué métodos de pago aceptan?",
-    a: "[Reemplazar: indica aquí si aceptan efectivo, transferencia, tarjeta, etc.]",
+    a: `Aceptamos ${CONFIG.paymentMethods.join(" y ")}. Eliges el método al momento de cotizar tu viaje.`,
   },
   {
     q: "¿Puedo cancelar mi reserva?",
-    a: "[Reemplazar: describe aquí tu política de cancelación, ej. tiempo mínimo de aviso, si hay cargo por cancelar tarde, etc.]",
+    a: `Sí. Si el viaje cuesta $${CONFIG.cancellation.freeThresholdUsd} o menos, puedes cancelar sin ningún cargo. Si cuesta más de $${CONFIG.cancellation.freeThresholdUsd}, la cancelación tiene un cargo del ${CONFIG.cancellation.feePercent}% del valor del viaje. Esta política se muestra siempre antes de confirmar tu reserva.`,
   },
   {
     q: "¿Los conductores hablan inglés?",
@@ -208,7 +247,7 @@ const FAQS = [
   },
   {
     q: "¿El viaje tiene algún tipo de seguro?",
-    a: "[Reemplazar: describe aquí si el servicio cuenta con seguro para pasajeros y en qué consiste.]",
+    a: "Nuestro compromiso es finalizar el viaje sin importar las condiciones: si ocurre un imprevisto en el camino (clima, tráfico, un desperfecto del vehículo), garantizamos que llegues a tu destino.",
   },
   {
     q: "¿Cuánto tardan en confirmar mi reserva?",
@@ -217,5 +256,9 @@ const FAQS = [
   {
     q: "¿Puedo pedir un viaje para varios pasajeros o con mascota?",
     a: "Sí. Al cotizar, indica el número de pasajeros y si llevas mascota — esa información se incluye automáticamente en tu mensaje de WhatsApp para que el equipo prepare el vehículo adecuado.",
+  },
+  {
+    q: "¿Hacen mudanzas?",
+    a: "Sí, atendemos mudanzas pequeñas y medianas. Como el precio depende del volumen y las condiciones de acceso, cotizamos cada mudanza directamente por WhatsApp con los detalles que nos compartas.",
   },
 ];

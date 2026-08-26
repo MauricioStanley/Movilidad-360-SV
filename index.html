@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a1628">
 <title>Movilidad 360 SV — Tu destino está más cerca de lo que te imaginas</title>
-<meta name="description" content="Movilidad 360 SV: cotiza y reserva viajes locales, traslados al aeropuerto, envío de encomiendas, viajes a cualquier departamento y a los mejores destinos turísticos de El Salvador. Cotización con distancia real de ruta y respuesta estimada en 5 minutos.">
+<meta name="description" content="Movilidad 360 SV: cotiza y reserva viajes locales, traslados al aeropuerto, envío de encomiendas, mudanzas, viajes a cualquier departamento y a los mejores destinos turísticos de El Salvador. Cotización con distancia real de ruta y respuesta estimada en 5 minutos.">
 <meta name="robots" content="index, follow">
 <!-- Open Graph / redes sociales -->
 <meta property="og:type" content="website">
@@ -85,7 +85,7 @@
       </div>
       <p class="response-badge"><span aria-hidden="true">⏱️</span> <span class="response-badge-text">Respuesta estimada: ~5 min</span></p>
       <div class="hero-stats">
-        <div class="hero-stat"><b>5</b><span>formas de moverte</span></div>
+        <div class="hero-stat"><b>6</b><span>formas de moverte</span></div>
         <div class="hero-stat"><b>14</b><span>departamentos cubiertos</span></div>
         <div class="hero-stat"><b id="stat-trips">+500</b><span>viajes realizados</span></div>
         <div class="hero-stat"><b>100%</b><span>cotización al instante y negociable</span></div>
@@ -145,7 +145,7 @@
                   <button type="button" class="quote-route-link" id="route-link-movilizarte" data-view-route="movilizarte" hidden>Ver ruta en el mapa</button>
                   <span class="quote-disclaimer">Precio estimado según la distancia real de la ruta. Se confirma por WhatsApp.</span>
                 </div>
-                <a class="btn btn-gold btn-wa btn-sm" id="wa-movilizarte" href="#" target="_blank" rel="noopener">Reservar por WhatsApp</a>
+                <button type="button" class="btn btn-gold btn-wa btn-sm" id="wa-movilizarte">Revisar y confirmar</button>
               </div>
             </div>
           </div>
@@ -179,7 +179,7 @@
                   <button type="button" class="quote-route-link" id="route-link-aeropuerto" data-view-route="aeropuerto" hidden>Ver ruta en el mapa</button>
                   <span class="quote-disclaimer">Precio estimado según la distancia real de la ruta. Se confirma por WhatsApp.</span>
                 </div>
-                <a class="btn btn-gold btn-wa btn-sm" id="wa-aeropuerto" href="#" target="_blank" rel="noopener">Reservar por WhatsApp</a>
+                <button type="button" class="btn btn-gold btn-wa btn-sm" id="wa-aeropuerto">Revisar y confirmar</button>
               </div>
             </div>
           </div>
@@ -260,7 +260,7 @@
                   <button type="button" class="quote-route-link" id="route-link-encomienda" data-view-route="encomienda" hidden>Ver ruta en el mapa</button>
                   <span class="quote-disclaimer">Precio estimado, sujeto a confirmación por WhatsApp.</span>
                 </div>
-                <a class="btn btn-gold btn-wa btn-sm" id="wa-encomienda" href="#" target="_blank" rel="noopener">Reservar por WhatsApp</a>
+                <button type="button" class="btn btn-gold btn-wa btn-sm" id="wa-encomienda">Revisar y confirmar</button>
               </div>
             </div>
           </div>
@@ -294,7 +294,7 @@
                   <button type="button" class="quote-route-link" id="route-link-departamento" data-view-route="departamento" hidden>Ver ruta en el mapa</button>
                   <span class="quote-disclaimer">Precio estimado según la distancia real de la ruta. Se confirma por WhatsApp.</span>
                 </div>
-                <a class="btn btn-gold btn-wa btn-sm" id="wa-departamento" href="#" target="_blank" rel="noopener">Reservar por WhatsApp</a>
+                <button type="button" class="btn btn-gold btn-wa btn-sm" id="wa-departamento">Revisar y confirmar</button>
               </div>
             </div>
           </div>
@@ -318,7 +318,11 @@
             </button>
 
             <div class="panel" id="panel-turismo">
-              <label class="field-label" for="input-turismo">Busca un destino turístico</label>
+              <p class="field-label">Rutas completas sugeridas</p>
+              <p class="field-hint">Varias paradas en un solo recorrido — ideal para un día completo.</p>
+              <div class="routes-grid" id="routes-turismo"></div>
+
+              <label class="field-label" for="input-turismo" style="margin-top:1.6rem;display:block;">O busca un destino individual</label>
               <div class="search-field">
                 <input type="text" id="input-turismo" placeholder="Ej. playa, volcán, Suchitoto…" autocomplete="off">
               </div>
@@ -337,7 +341,70 @@
                   <button type="button" class="quote-route-link" id="route-link-turismo" data-view-route="turismo" hidden>Ver ruta en el mapa</button>
                   <span class="quote-disclaimer">Precio estimado según la distancia real de la ruta. Se confirma por WhatsApp.</span>
                 </div>
-                <a class="btn btn-gold btn-wa btn-sm" id="wa-turismo" href="#" target="_blank" rel="noopener">Reservar por WhatsApp</a>
+                <button type="button" class="btn btn-gold btn-wa btn-sm" id="wa-turismo">Revisar y confirmar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="stop-spacer"></div>
+      </article>
+
+      <!-- PARADA 6: Mudanzas -->
+      <article class="stop" id="stop-mudanza" data-stop>
+        <div class="stop-pin" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="10" width="12" height="8" rx="1.2"/><path d="M14.5 13h3.2l3.3 3.2V18h-6.5"/><circle cx="7" cy="19.5" r="1.6"/><circle cx="17" cy="19.5" r="1.6"/><path d="M6 10V6h5v4"/></svg>
+        </div>
+        <div class="stop-body">
+          <div class="stop-card">
+            <p class="stop-kicker">Parada 06 — Mudanzas</p>
+            <h3>¿Necesitas hacer una mudanza?</h3>
+            <p class="lede">Mudanzas pequeñas y medianas. Cuéntanos el tamaño y las direcciones, y te confirmamos el precio directo por WhatsApp.</p>
+            <button class="btn btn-outline-ink toggle-launch" data-toggle="panel-mudanza" aria-expanded="false">
+              Cotizar mudanza
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+
+            <div class="panel" id="panel-mudanza">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="field-label" id="mudanza-size-label">Tamaño de la mudanza</label>
+                  <div class="pill-toggle" id="mudanza-size" role="group" aria-labelledby="mudanza-size-label">
+                    <button type="button" class="pill-option" data-size="estudio" aria-pressed="false">Estudio</button>
+                    <button type="button" class="pill-option" data-size="apartamento" aria-pressed="false">Apartamento (1-2 hab.)</button>
+                    <button type="button" class="pill-option" data-size="casa" aria-pressed="false">Casa</button>
+                  </div>
+                </div>
+
+                <div class="form-grid two-col">
+                  <div class="form-group">
+                    <label class="field-label" for="mudanza-from">Dirección de recolección</label>
+                    <div class="search-field"><input type="text" id="mudanza-from" placeholder="Dirección o referencia de origen"></div>
+                    <button type="button" class="btn btn-outline-ink btn-sm" data-open-map="mudanza-from" style="margin-top:0.5rem;">Marcar en el mapa</button>
+                    <p class="field-hint" id="mudanza-from-map-hint"></p>
+                  </div>
+                  <div class="form-group">
+                    <label class="field-label" for="mudanza-to">Dirección de entrega</label>
+                    <div class="search-field"><input type="text" id="mudanza-to" placeholder="Dirección o referencia de destino"></div>
+                    <button type="button" class="btn btn-outline-ink btn-sm" data-open-map="mudanza-to" style="margin-top:0.5rem;">Marcar en el mapa</button>
+                    <p class="field-hint" id="mudanza-to-map-hint"></p>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="field-label" for="mudanza-notes">Detalles adicionales (opcional)</label>
+                  <textarea id="mudanza-notes" placeholder="Ej. Tercer piso sin ascensor, electrodomésticos grandes, fecha deseada…"></textarea>
+                </div>
+              </div>
+
+              <div class="quote-box" id="quote-mudanza">
+                <div class="quote-info" aria-live="polite">
+                  <span class="quote-route" id="quote-mudanza-route">Mudanza — cotización personalizada</span>
+                  <span class="quote-eta" id="quote-mudanza-eta"></span>
+                  <span class="quote-route-badge" id="quote-mudanza-badge"></span>
+                  <button type="button" class="quote-route-link" id="route-link-mudanza" data-view-route="mudanza" hidden>Ver ruta en el mapa</button>
+                  <span class="quote-disclaimer">El precio de tu mudanza se confirma directamente por WhatsApp.</span>
+                </div>
+                <button type="button" class="btn btn-gold btn-wa btn-sm" id="wa-mudanza">Revisar y confirmar</button>
               </div>
             </div>
           </div>
@@ -454,6 +521,7 @@
         <li><a href="#stop-encomienda">Envío de encomiendas</a></li>
         <li><a href="#stop-departamento">Viajes interdepartamentales</a></li>
         <li><a href="#stop-turismo">Turismo en El Salvador</a></li>
+        <li><a href="#stop-mudanza">Mudanzas</a></li>
       </ul>
     </div>
     <div class="footer-col">
@@ -495,6 +563,31 @@
     <div class="map-modal-foot">
       <p id="mapModalHint">Toca el mapa para colocar un pin en tu destino.</p>
       <button class="btn btn-gold btn-sm" id="mapModalConfirm" disabled>Usar este punto</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CONFIRMAR VIAJE ============ -->
+<div class="map-modal confirm-modal" id="confirmModal">
+  <div class="map-modal-card confirm-modal-card" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+    <div class="map-modal-head">
+      <h4 id="confirmModalTitle">Confirmar viaje</h4>
+      <button class="map-modal-close" id="confirmModalClose" aria-label="Cerrar">&times;</button>
+    </div>
+    <div class="confirm-modal-body">
+      <div id="confirmRows" class="confirm-rows"></div>
+
+      <div class="confirm-payment">
+        <span class="field-label" id="confirm-payment-label">Método de pago</span>
+        <div class="pill-toggle" id="confirmPaymentPills" role="group" aria-labelledby="confirm-payment-label"></div>
+      </div>
+
+      <p class="confirm-cancellation" id="confirmCancellation"></p>
+      <p class="confirm-insurance">🛡️ Tu viaje incluye nuestro compromiso: lo finalizamos sin importar las condiciones.</p>
+    </div>
+    <div class="map-modal-foot">
+      <button class="btn btn-outline-ink btn-sm" id="confirmEditBtn">Editar</button>
+      <button class="btn btn-gold btn-sm btn-wa" id="confirmSendBtn">Confirmar y enviar por WhatsApp</button>
     </div>
   </div>
 </div>
