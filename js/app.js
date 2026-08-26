@@ -260,7 +260,6 @@
         const next = Math.min(8, Math.max(1, paxPetsState[prefix].pax + dir));
         paxPetsState[prefix].pax = next;
         valueEl.textContent = String(next);
-        refreshQuoteMessage(prefix);
         persistAll();
       });
     });
@@ -270,7 +269,6 @@
       petsBtn.classList.toggle("on");
       paxPetsState[prefix].pets = petsBtn.classList.contains("on");
       petsBtn.setAttribute("aria-pressed", String(paxPetsState[prefix].pets));
-      refreshQuoteMessage(prefix);
       persistAll();
     });
   }
@@ -302,7 +300,20 @@
     turismo: "viaje turístico",
   };
 
-  function buildQuoteMessage(prefix, { originName, destName, price, minutes, distanceKm, extraLine, real }) {
+  // Línea de política de cancelación, calculada según el precio real de
+  // esta cotización — se advierte SIEMPRE al solicitar el viaje.
+  function cancellationLine(price) {
+    if (price == null) {
+      return "La política de cancelación se confirma junto con tu cotización personalizada.";
+    }
+    if (price > CONFIG.cancellation.freeThresholdUsd) {
+      const fee = (price * CONFIG.cancellation.feePercent) / 100;
+      return `Cancelación: se cobra ${CONFIG.cancellation.feePercent}% (${formatMoney(fee)}) por ser mayor a ${formatMoney(CONFIG.cancellation.freeThresholdUsd)}.`;
+    }
+    return `Cancelación: sin cargo (viaje de ${formatMoney(price)}, no supera ${formatMoney(CONFIG.cancellation.freeThresholdUsd)}).`;
+  }
+
+  function buildQuoteMessage(prefix, { originName, destName, price, minutes, distanceKm, extraLine, real }, paymentMethod) {
     const { passengers, pets } = paxPetsFor(prefix);
     const mapsLink = originMapsLink();
     return (
@@ -316,20 +327,12 @@
       `💵 Precio estimado: ${formatMoney(price)}\n` +
       `⏱️ Tiempo estimado: ${formatEta(minutes)}\n` +
       `👥 Pasajeros: ${passengers}\n` +
-      `🐾 Mascota: ${pets ? "Sí" : "No"}` +
+      `🐾 Mascota: ${pets ? "Sí" : "No"}\n` +
+      `💳 Método de pago: ${paymentMethod}` +
       (extraLine ? `\n${extraLine}` : "") +
+      `\n⚠️ ${cancellationLine(price)}` +
       `\n\n¿Podrían confirmar disponibilidad?`
     );
-  }
-
-  // Se llama cuando cambian pasajeros/mascota después de ya mostrar una
-  // cotización, para que el mensaje de WhatsApp quede siempre al día sin
-  // tener que volver a calcular la ruta.
-  function refreshQuoteMessage(prefix) {
-    const data = lastQuoteResult[prefix];
-    const waBtn = $(`#wa-${prefix}`);
-    if (!data || !waBtn) return;
-    waBtn.href = waLink(buildQuoteMessage(prefix, data));
   }
 
   function showQuoteLoading(prefix, originName, destName) {
@@ -371,7 +374,25 @@
     if (routeLinkEl) routeLinkEl.hidden = false;
 
     lastQuoteResult[prefix] = data;
-    $(`#wa-${prefix}`).href = waLink(buildQuoteMessage(prefix, data));
+    if (waBtn) {
+      waBtn.onclick = () => {
+        const { passengers, pets } = paxPetsFor(prefix);
+        openConfirmModal({
+          price: data.price,
+          rows: [
+            { label: "Servicio", value: SERVICE_NAMES[prefix] },
+            { label: "Desde", value: data.originName },
+            { label: "Hasta", value: data.destName },
+            { label: "Distancia", value: `${data.distanceKm.toFixed(1)} km (${data.real ? "ruta real" : "aproximada"})` },
+            { label: "Tiempo estimado", value: formatEta(data.minutes) },
+            { label: "Precio estimado", value: formatMoney(data.price) },
+            { label: "Pasajeros", value: String(passengers) },
+            { label: "Mascota", value: pets ? "Sí" : "No" },
+          ],
+          buildMessage: (paymentMethod) => buildQuoteMessage(prefix, data, paymentMethod),
+        });
+      };
+    }
   }
 
   /* =====================================================================
@@ -552,21 +573,43 @@
     const to = $("#parcel-to").value.trim() || "(pendiente de confirmar)";
     const notes = $("#parcel-notes").value.trim();
 
-    const msg =
-      `Hola *MOVILIDAD 360 SV* 👋\n\n` +
-      `Quiero cotizar el envío de una *encomienda*:\n` +
-      `📦 Tamaño: ${parcelSizeLabels[parcelState.size]}\n` +
-      `🚀 Urgencia: ${parcelState.urgent ? "Mismo día (express)" : "Estándar"}\n` +
-      `⚠️ Frágil: ${parcelState.fragile ? "Sí" : "No"}\n` +
-      `📍 Recolección: ${from}\n` +
-      `🎯 Entrega: ${to}` +
-      (distanceKm !== null ? `\n📏 Distancia ${real ? "real por carretera" : "aproximada"}: ${distanceKm.toFixed(1)} km` : "") +
-      (notes ? `\n📝 Instrucciones: ${notes}` : "") +
-      `\n💵 Precio estimado: ${formatMoney(price)}\n\n¿Podrían confirmar disponibilidad?`;
+    lastParcelQuote = { price, distanceKm, real, from, to, notes };
 
-    $("#wa-encomienda").href = waLink(msg);
+    const waBtn = $("#wa-encomienda");
+    if (waBtn) {
+      waBtn.onclick = () => {
+        openConfirmModal({
+          price,
+          rows: [
+            { label: "Servicio", value: "Encomienda" },
+            { label: "Tamaño", value: parcelSizeLabels[parcelState.size] },
+            { label: "Urgencia", value: parcelState.urgent ? "Mismo día (express)" : "Estándar" },
+            { label: "Frágil", value: parcelState.fragile ? "Sí" : "No" },
+            { label: "Recolección", value: from },
+            { label: "Entrega", value: to },
+            ...(distanceKm !== null ? [{ label: "Distancia", value: `${distanceKm.toFixed(1)} km (${real ? "ruta real" : "aproximada"})` }] : []),
+            { label: "Precio estimado", value: formatMoney(price) },
+          ],
+          buildMessage: (paymentMethod) =>
+            `Hola *MOVILIDAD 360 SV* 👋\n\n` +
+            `Quiero cotizar el envío de una *encomienda*:\n` +
+            `📦 Tamaño: ${parcelSizeLabels[parcelState.size]}\n` +
+            `🚀 Urgencia: ${parcelState.urgent ? "Mismo día (express)" : "Estándar"}\n` +
+            `⚠️ Frágil: ${parcelState.fragile ? "Sí" : "No"}\n` +
+            `📍 Recolección: ${from}\n` +
+            `🎯 Entrega: ${to}` +
+            (distanceKm !== null ? `\n📏 Distancia ${real ? "real por carretera" : "aproximada"}: ${distanceKm.toFixed(1)} km` : "") +
+            (notes ? `\n📝 Instrucciones: ${notes}` : "") +
+            `\n💵 Precio estimado: ${formatMoney(price)}\n` +
+            `💳 Método de pago: ${paymentMethod}` +
+            `\n⚠️ ${cancellationLine(price)}` +
+            `\n\n¿Podrían confirmar disponibilidad?`,
+        });
+      };
+    }
     persistAll();
   }
+  let lastParcelQuote = null;
 
   function selectParcelPoint(which, place) {
     const inputId = which === "from" ? "#parcel-from" : "#parcel-to";
@@ -626,6 +669,97 @@
     $("#parcel-notes").addEventListener("input", debouncedParcelQuote);
   }
   const debouncedParcelQuote = debounce(updateParcelQuote, 250);
+
+  /* =====================================================================
+     PARADA 6 — Mudanzas (cotización personalizada, sin precio automático:
+     el costo de una mudanza depende de volumen y acceso, no solo de km)
+     ===================================================================== */
+  const mudanzaState = { size: null, fromPoint: null, toPoint: null, fromName: "", toName: "" };
+  const mudanzaSizeLabels = {
+    estudio: "Estudio",
+    apartamento: "Apartamento (1-2 habitaciones)",
+    casa: "Casa",
+  };
+
+  function updateMudanzaQuote() {
+    if (!mudanzaState.size) return;
+    $("#quote-mudanza-route").textContent = `Mudanza (${mudanzaSizeLabels[mudanzaState.size]}) — cotización personalizada`;
+    $("#quote-mudanza-eta").textContent = "Te confirmamos el precio por WhatsApp.";
+    $("#quote-mudanza").classList.add("show");
+
+    const from = $("#mudanza-from").value.trim() || "(pendiente de confirmar)";
+    const to = $("#mudanza-to").value.trim() || "(pendiente de confirmar)";
+    const notes = $("#mudanza-notes").value.trim();
+
+    const waBtn = $("#wa-mudanza");
+    if (waBtn) {
+      waBtn.onclick = () => {
+        openConfirmModal({
+          price: null,
+          rows: [
+            { label: "Servicio", value: "Mudanza" },
+            { label: "Tamaño", value: mudanzaSizeLabels[mudanzaState.size] },
+            { label: "Recolección", value: from },
+            { label: "Entrega", value: to },
+          ],
+          buildMessage: (paymentMethod) =>
+            `Hola *MOVILIDAD 360 SV* 👋\n\n` +
+            `Quiero cotizar una *mudanza*:\n` +
+            `🏠 Tamaño: ${mudanzaSizeLabels[mudanzaState.size]}\n` +
+            `📍 Recolección: ${from}\n` +
+            `🎯 Entrega: ${to}` +
+            (notes ? `\n📝 Detalles: ${notes}` : "") +
+            `\n💳 Método de pago preferido: ${paymentMethod}` +
+            `\n⚠️ ${cancellationLine(null)}` +
+            `\n\n¿Podrían darme una cotización?`,
+        });
+      };
+    }
+    persistAll();
+  }
+
+  function selectMudanzaPoint(which, place) {
+    const inputId = which === "from" ? "#mudanza-from" : "#mudanza-to";
+    const hintId = which === "from" ? "#mudanza-from-map-hint" : "#mudanza-to-map-hint";
+    $(inputId).value = place.name;
+    $(hintId).textContent = "Punto marcado en el mapa ✓";
+    if (which === "from") {
+      mudanzaState.fromPoint = { lat: place.lat, lng: place.lng };
+      mudanzaState.fromName = place.name;
+    } else {
+      mudanzaState.toPoint = { lat: place.lat, lng: place.lng };
+      mudanzaState.toName = place.name;
+    }
+    updateMudanzaQuote();
+  }
+
+  function wireMudanzaForm() {
+    $$("#mudanza-size .pill-option").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        $$("#mudanza-size .pill-option").forEach((b) => {
+          b.classList.remove("selected");
+          b.setAttribute("aria-pressed", "false");
+        });
+        btn.classList.add("selected");
+        btn.setAttribute("aria-pressed", "true");
+        mudanzaState.size = btn.dataset.size;
+        updateMudanzaQuote();
+      });
+    });
+
+    $("#mudanza-from").addEventListener("input", () => {
+      mudanzaState.fromPoint = null;
+      $("#mudanza-from-map-hint").textContent = "";
+      debouncedMudanzaQuote();
+    });
+    $("#mudanza-to").addEventListener("input", () => {
+      mudanzaState.toPoint = null;
+      $("#mudanza-to-map-hint").textContent = "";
+      debouncedMudanzaQuote();
+    });
+    $("#mudanza-notes").addEventListener("input", debouncedMudanzaQuote);
+  }
+  const debouncedMudanzaQuote = debounce(updateMudanzaQuote, 250);
 
   /* =====================================================================
      PARADA 4 — ¿Viajar a otro departamento?
@@ -759,9 +893,11 @@
   }
 
   let lastTourismSelection = null;
+  let lastTourismRouteSelection = null;
 
   async function selectTourism(place) {
     lastTourismSelection = place;
+    lastTourismRouteSelection = null;
     const origin = currentOrigin();
     const originName = originLabel();
     showQuoteLoading("turismo", originName, place.name);
@@ -780,6 +916,71 @@
       minutes: route.minutes,
       distanceKm: route.distanceKm,
       real: route.real,
+    });
+    persistAll();
+  }
+
+  /* ---------------- Rutas turísticas sugeridas (varias paradas) ---------------- */
+  function renderTouristRoutes() {
+    const grid = $("#routes-turismo");
+    if (!grid) return;
+    grid.innerHTML = TOURIST_ROUTES.map(
+      (r, i) => `
+      <button type="button" class="route-card" data-idx="${i}">
+        <h4>${r.name}</h4>
+        <p class="route-desc">${r.desc}</p>
+        <p class="route-stops">${r.stops.join(" → ")}</p>
+      </button>`
+    ).join("");
+    $$(".route-card", grid).forEach((card, i) => {
+      card.addEventListener("click", () => {
+        $$(".route-card", grid).forEach((c) => c.classList.remove("selected"));
+        card.classList.add("selected");
+        selectTouristRoute(TOURIST_ROUTES[i]);
+      });
+    });
+  }
+
+  async function selectTouristRoute(route) {
+    lastTourismRouteSelection = route;
+    lastTourismSelection = null;
+    const stopPlaces = route.stops.map((name) => TOURIST_PLACES.find((p) => p.name === name)).filter(Boolean);
+    if (stopPlaces.length === 0) return;
+
+    const origin = currentOrigin();
+    const originName = originLabel();
+    const destLabel = `${route.name} (${route.stops.join(" → ")})`;
+    showQuoteLoading("turismo", originName, destLabel);
+
+    let totalKm = 0;
+    let totalMinutes = 0;
+    let allReal = true;
+    let coordsAll = [];
+    let legOrigin = origin;
+    for (const stop of stopPlaces) {
+      const leg = await fetchRoute(legOrigin, stop);
+      totalKm += leg.distanceKm;
+      totalMinutes += leg.minutes;
+      if (!leg.real) allReal = false;
+      if (leg.coords) coordsAll = coordsAll.concat(leg.coords);
+      legOrigin = stop;
+    }
+
+    const lastStop = stopPlaces[stopPlaces.length - 1];
+    quoteRouteData.turismo = {
+      originLatLng: [origin.lat, origin.lng],
+      destLatLng: [lastStop.lat, lastStop.lng],
+      coords: coordsAll.length ? coordsAll : null,
+      real: allReal,
+    };
+    const price = estimatePrice(totalKm);
+    showQuote("turismo", {
+      originName,
+      destName: destLabel,
+      price,
+      minutes: totalMinutes,
+      distanceKm: totalKm,
+      real: allReal,
     });
     persistAll();
   }
@@ -905,7 +1106,73 @@
       if (mapContext === "turismo") selectTourism(place);
       if (mapContext === "parcel-from") selectParcelPoint("from", place);
       if (mapContext === "parcel-to") selectParcelPoint("to", place);
+      if (mapContext === "mudanza-from") selectMudanzaPoint("from", place);
+      if (mapContext === "mudanza-to") selectMudanzaPoint("to", place);
       closeMapModal();
+    });
+  }
+
+  /* =====================================================================
+     Confirmar viaje — resumen final antes de enviar por WhatsApp
+     Se muestra SIEMPRE la política de cancelación al solicitar el viaje,
+     y se elige el método de pago (efectivo o transferencia) en este paso.
+     ===================================================================== */
+  let confirmModalCtx = null;
+  let confirmPaymentMethod = CONFIG.paymentMethods[0];
+
+  function renderConfirmRows(rows) {
+    $("#confirmRows").innerHTML = rows
+      .map((r) => `<div class="confirm-row"><span>${r.label}</span><strong>${r.value}</strong></div>`)
+      .join("");
+  }
+
+  function renderConfirmPaymentPills() {
+    $("#confirmPaymentPills").innerHTML = CONFIG.paymentMethods.map(
+      (m) => `<button type="button" class="pill-option${m === confirmPaymentMethod ? " selected" : ""}" data-method="${m}" aria-pressed="${m === confirmPaymentMethod}">${m}</button>`
+    ).join("");
+    $$("#confirmPaymentPills .pill-option").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        confirmPaymentMethod = btn.dataset.method;
+        $$("#confirmPaymentPills .pill-option").forEach((b) => {
+          b.classList.toggle("selected", b === btn);
+          b.setAttribute("aria-pressed", String(b === btn));
+        });
+      });
+    });
+  }
+
+  function renderCancellationNotice(price) {
+    const el = $("#confirmCancellation");
+    const isFee = price != null && price > CONFIG.cancellation.freeThresholdUsd;
+    el.textContent = (isFee ? "⚠️ " : price == null ? "ℹ️ " : "✅ ") + cancellationLine(price);
+    el.classList.toggle("is-fee", isFee);
+  }
+
+  function openConfirmModal({ rows, price, buildMessage }) {
+    confirmModalCtx = { buildMessage };
+    renderConfirmRows(rows);
+    renderConfirmPaymentPills();
+    renderCancellationNotice(price);
+    $("#confirmModal").classList.add("open");
+  }
+
+  function closeConfirmModal() {
+    $("#confirmModal").classList.remove("open");
+    confirmModalCtx = null;
+  }
+
+  function wireConfirmModal() {
+    $("#confirmModalClose").addEventListener("click", closeConfirmModal);
+    $("#confirmEditBtn").addEventListener("click", closeConfirmModal);
+    $("#confirmModal").addEventListener("click", (e) => {
+      if (e.target.id === "confirmModal") closeConfirmModal();
+    });
+    $("#confirmSendBtn").addEventListener("click", () => {
+      if (!confirmModalCtx) return;
+      const msg = confirmModalCtx.buildMessage(confirmPaymentMethod);
+      trackEvent("whatsapp_click", { link_id: "confirm-send" });
+      window.open(waLink(msg), "_blank", "noopener");
+      closeConfirmModal();
     });
   }
 
@@ -976,23 +1243,55 @@
     sedan: '<path d="M4 16l1.5-5.5A2 2 0 0 1 7.4 9h9.2a2 2 0 0 1 1.9 1.5L20 16"/><rect x="3" y="16" width="18" height="4" rx="1.4"/><circle cx="7.5" cy="20" r="1.6"/><circle cx="16.5" cy="20" r="1.6"/><path d="M7 13h10"/>',
     suv: '<path d="M3.5 16l1-6A2 2 0 0 1 6.4 8.5h11.2A2 2 0 0 1 19.5 10l1 6"/><rect x="2.5" y="16" width="19" height="4.2" rx="1.4"/><circle cx="7.5" cy="20.4" r="1.6"/><circle cx="16.5" cy="20.4" r="1.6"/><path d="M6.5 12.5h11M4 6.5h5"/>',
     van: '<rect x="3" y="7" width="18" height="10" rx="2"/><path d="M3 12h18M8 7v10" /><rect x="3" y="16.6" width="18" height="3.6" rx="1.2"/><circle cx="7.5" cy="20.6" r="1.5"/><circle cx="16.5" cy="20.6" r="1.5"/>',
-    moto: '<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17l4-8h4l2 4h3M10 9H8m4 8h4"/>',
+    pickup: '<path d="M2.5 15.5V10h6v5.5"/><path d="M8.5 11h4.5l3.5 3.2v1.3h-8"/><rect x="2.5" y="8" width="6" height="2" /><circle cx="6" cy="18" r="1.6"/><circle cx="16" cy="18" r="1.6"/><path d="M2.5 15.5h1.9M16.5 15.5h2"/>',
   };
 
   function renderVehicles() {
     const grid = $("#vehicles-grid");
     if (!grid) return;
     grid.innerHTML = VEHICLES.map(
-      (v) => `
-      <div class="vehicle-card">
-        <div class="vehicle-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${VEHICLE_ICONS[v.icon] || ""}</svg>
+      (v, i) => `
+      <button type="button" class="vehicle-card" data-idx="${i}">
+        <div class="vehicle-media">
+          ${
+            v.photo
+              ? `<img src="${v.photo}" alt="${v.type}" loading="lazy">`
+              : `<svg class="vehicle-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${VEHICLE_ICONS[v.icon] || ""}</svg>`
+          }
         </div>
         <h4>${v.type}</h4>
         <p class="vehicle-capacity">${v.capacity}</p>
         <p class="vehicle-desc">${v.desc}</p>
-      </div>`
+      </button>`
     ).join("");
+    wireVehicleCardTilt();
+  }
+
+  // Efecto de tarjeta "fluida": inclinación 3D que sigue el cursor, para
+  // que al pasar el mouse la tarjeta se sienta viva y la imagen/ícono del
+  // vehículo se aprecie mejor. Al tocar/hacer clic, la tarjeta queda
+  // resaltada como "en vista" (no es una selección de reserva: el vehículo
+  // real lo asigna el equipo).
+  function wireVehicleCardTilt() {
+    const grid = $("#vehicles-grid");
+    if (!grid) return;
+    $$(".vehicle-card", grid).forEach((card) => {
+      card.addEventListener("mousemove", (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width - 0.5;
+        const y = (e.clientY - rect.top) / rect.height - 0.5;
+        card.style.setProperty("--ry", `${x * 16}deg`);
+        card.style.setProperty("--rx", `${-y * 16}deg`);
+      });
+      card.addEventListener("mouseleave", () => {
+        card.style.setProperty("--ry", "0deg");
+        card.style.setProperty("--rx", "0deg");
+      });
+      card.addEventListener("click", () => {
+        $$(".vehicle-card", grid).forEach((c) => c.classList.remove("selected"));
+        card.classList.add("selected");
+      });
+    });
   }
 
   function renderStats() {
@@ -1113,6 +1412,7 @@
     if (lastAirportSelection) selectAirport(lastAirportSelection);
     if (lastDepartmentSelection) selectDepartment(lastDepartmentSelection);
     if (lastTourismSelection) selectTourism(lastTourismSelection);
+    if (lastTourismRouteSelection) selectTouristRoute(lastTourismRouteSelection);
   }
 
   /* =====================================================================
@@ -1125,7 +1425,7 @@
 
   function persistAll() {
     try {
-      const state = { travel: {}, parcel: null };
+      const state = { travel: {}, parcel: null, mudanza: null, tourismRoute: null };
       TRAVEL_PREFIXES.forEach((prefix) => {
         const selection = {
           movilizarte: lastMovilizarteSelection,
@@ -1141,6 +1441,14 @@
           paxPets: paxPetsState[prefix] || { pax: 1, pets: false },
         };
       });
+      if (lastTourismRouteSelection && lastQuoteResult.turismo) {
+        state.tourismRoute = {
+          route: lastTourismRouteSelection,
+          quoteData: lastQuoteResult.turismo,
+          route_: quoteRouteData.turismo || null,
+          paxPets: paxPetsState.turismo || { pax: 1, pets: false },
+        };
+      }
       if (parcelState.size) {
         state.parcel = {
           size: parcelState.size,
@@ -1151,6 +1459,16 @@
           fromName: $("#parcel-from") ? $("#parcel-from").value : "",
           toName: $("#parcel-to") ? $("#parcel-to").value : "",
           notes: $("#parcel-notes") ? $("#parcel-notes").value : "",
+        };
+      }
+      if (mudanzaState.size) {
+        state.mudanza = {
+          size: mudanzaState.size,
+          fromPoint: mudanzaState.fromPoint,
+          toPoint: mudanzaState.toPoint,
+          fromName: $("#mudanza-from") ? $("#mudanza-from").value : "",
+          toName: $("#mudanza-to") ? $("#mudanza-to").value : "",
+          notes: $("#mudanza-notes") ? $("#mudanza-notes").value : "",
         };
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -1185,6 +1503,30 @@
         if (saved.route) quoteRouteData[prefix] = saved.route;
         if (saved.quoteData) showQuote(prefix, saved.quoteData);
       });
+    }
+
+    if (state.tourismRoute) {
+      lastTourismRouteSelection = state.tourismRoute.route;
+      if (state.tourismRoute.paxPets) applyPaxPetsUi("turismo", state.tourismRoute.paxPets.pax, state.tourismRoute.paxPets.pets);
+      if (state.tourismRoute.route_) quoteRouteData.turismo = state.tourismRoute.route_;
+      if (state.tourismRoute.quoteData) showQuote("turismo", state.tourismRoute.quoteData);
+    }
+
+    if (state.mudanza) {
+      mudanzaState.size = state.mudanza.size;
+      mudanzaState.fromPoint = state.mudanza.fromPoint;
+      mudanzaState.toPoint = state.mudanza.toPoint;
+      $$("#mudanza-size .pill-option").forEach((btn) => {
+        const isSel = btn.dataset.size === state.mudanza.size;
+        btn.classList.toggle("selected", isSel);
+        btn.setAttribute("aria-pressed", String(isSel));
+      });
+      $("#mudanza-from").value = state.mudanza.fromName || "";
+      $("#mudanza-to").value = state.mudanza.toName || "";
+      $("#mudanza-notes").value = state.mudanza.notes || "";
+      if (state.mudanza.fromPoint) $("#mudanza-from-map-hint").textContent = "Punto marcado en el mapa ✓";
+      if (state.mudanza.toPoint) $("#mudanza-to-map-hint").textContent = "Punto marcado en el mapa ✓";
+      updateMudanzaQuote();
     }
 
     if (state.parcel) {
@@ -1265,6 +1607,7 @@
     wireGenericWaLinks();
     wireTogglePanels();
     wireMapModal();
+    wireConfirmModal();
     wireJourneyScrollFx();
     wireCoverageMap();
     renderTestimonials();
@@ -1297,6 +1640,7 @@
     renderDepartments();
 
     // Parada 5
+    renderTouristRoutes();
     renderTouristChips();
     renderTourism();
     $("#input-turismo").addEventListener(
@@ -1306,6 +1650,9 @@
         renderTourism();
       }, 180)
     );
+
+    // Parada 6
+    wireMudanzaForm();
 
     // Trabaja con nosotros
     wireJoinUsLink();
