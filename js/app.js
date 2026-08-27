@@ -169,6 +169,13 @@
   function originMapsLink() {
     return userLocation ? googleMapsLink(userLocation.lat, userLocation.lng) : null;
   }
+  // Enlace de Google Maps para un punto marcado a mano (encomienda/mudanza),
+  // que puede venir de la ubicación real del cliente si usó el mapa para
+  // marcarlo. Si solo escribió una dirección de texto, no hay coordenadas
+  // y no se puede armar el enlace.
+  function pointMapsLink(point) {
+    return point ? googleMapsLink(point.lat, point.lng) : null;
+  }
 
   // Convierte coordenadas en una referencia legible (colonia/calle) usando
   // Nominatim (OpenStreetMap), gratuito y sin API key. Es un "mejor esfuerzo":
@@ -596,8 +603,11 @@
             `📦 Tamaño: ${parcelSizeLabels[parcelState.size]}\n` +
             `🚀 Urgencia: ${parcelState.urgent ? "Mismo día (express)" : "Estándar"}\n` +
             `⚠️ Frágil: ${parcelState.fragile ? "Sí" : "No"}\n` +
-            `📍 Recolección: ${from}\n` +
+            `📍 Recolección: ${from}` +
+            (pointMapsLink(parcelState.fromPoint) ? ` — ${pointMapsLink(parcelState.fromPoint)}` : "") +
+            `\n` +
             `🎯 Entrega: ${to}` +
+            (pointMapsLink(parcelState.toPoint) ? ` — ${pointMapsLink(parcelState.toPoint)}` : "") +
             (distanceKm !== null ? `\n📏 Distancia ${real ? "real por carretera" : "aproximada"}: ${distanceKm.toFixed(1)} km` : "") +
             (notes ? `\n📝 Instrucciones: ${notes}` : "") +
             `\n💵 Precio estimado: ${formatMoney(price)}\n` +
@@ -706,8 +716,11 @@
             `Hola *MOVILIDAD 360 SV* 👋\n\n` +
             `Quiero cotizar una *mudanza*:\n` +
             `🏠 Tamaño: ${mudanzaSizeLabels[mudanzaState.size]}\n` +
-            `📍 Recolección: ${from}\n` +
+            `📍 Recolección: ${from}` +
+            (pointMapsLink(mudanzaState.fromPoint) ? ` — ${pointMapsLink(mudanzaState.fromPoint)}` : "") +
+            `\n` +
             `🎯 Entrega: ${to}` +
+            (pointMapsLink(mudanzaState.toPoint) ? ` — ${pointMapsLink(mudanzaState.toPoint)}` : "") +
             (notes ? `\n📝 Detalles: ${notes}` : "") +
             `\n💳 Método de pago preferido: ${paymentMethod}` +
             `\n⚠️ ${cancellationLine(null)}` +
