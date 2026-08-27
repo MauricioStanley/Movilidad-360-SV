@@ -13,13 +13,15 @@
 <meta property="og:title" content="Movilidad 360 SV — Tu destino está más cerca de lo que te imaginas">
 <meta property="og:description" content="Cotiza y reserva viajes locales, traslados al aeropuerto, envío de encomiendas, viajes interdepartamentales y turismo en El Salvador, directo por WhatsApp.">
 <meta property="og:locale" content="es_SV">
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="https://movilidad360sv.com/img/brand/hero-bg.jpg">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Movilidad 360 SV">
 <meta name="twitter:description" content="Cotiza y reserva tu transporte en El Salvador directo por WhatsApp.">
+<meta name="twitter:image" content="https://movilidad360sv.com/img/brand/hero-bg.jpg">
 <link rel="canonical" href="https://movilidad360sv.com/">
 <meta property="og:url" content="https://movilidad360sv.com/">
 <!-- ⚠️ Google Analytics (GA4): pega tu snippet de gtag.js aquí cuando tengas tu Measurement ID (G-XXXXXXX) -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%230d1a33'/%3E%3Cpath d='M20 60 L50 30 L80 60' stroke='%23e0993a' stroke-width='8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -52,7 +54,7 @@
 <header class="site-header">
   <div class="wrap">
     <a href="#top" class="brand">
-      <span class="brand-mark"><span>360</span></span>
+      <img class="brand-mark-img" src="img/brand/logo-mark.png" alt="Movilidad 360 SV" width="40" height="40">
       <span class="brand-word">Movilidad 360 SV<small>El Salvador</small></span>
     </a>
     <div class="header-actions">
@@ -87,7 +89,7 @@
       </div>
       <p class="response-badge"><span aria-hidden="true">⏱️</span> <span class="response-badge-text">Respuesta estimada: ~5 min</span></p>
       <div class="hero-stats">
-        <div class="hero-stat"><b>6</b><span>formas de moverte</span></div>
+        <div class="hero-stat"><b>7</b><span>formas de moverte</span></div>
         <div class="hero-stat"><b>14</b><span>departamentos cubiertos</span></div>
         <div class="hero-stat"><b id="stat-trips">+500</b><span>viajes realizados</span></div>
         <div class="hero-stat"><b>100%</b><span>cotización al instante y negociable</span></div>
@@ -414,6 +416,47 @@
         <div class="stop-spacer"></div>
       </article>
 
+      <!-- PARADA 7: Tarifas fijas -->
+      <article class="stop" id="stop-tarifafija" data-stop>
+        <div class="stop-pin" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 9.5c0-1.4 1.3-2.5 3-2.5s3 .9 3 2.2-1.3 1.9-3 2.3-3 1-3 2.3S10.6 16 12 16s3-.9 3-2.3"/></svg>
+        </div>
+        <div class="stop-body">
+          <div class="stop-card">
+            <p class="stop-kicker">Parada 07 — Tarifas fijas</p>
+            <h3>¿Sales desde Assistenza Italiana?</h3>
+            <p class="lede">Para estos destinos ya tenemos un precio fijo acordado, sin cálculo de distancia: elige tu destino y confirma directo por WhatsApp.</p>
+            <button class="btn btn-outline-ink toggle-launch" data-toggle="panel-tarifafija" aria-expanded="false">
+              Ver tarifas fijas
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+
+            <div class="panel" id="panel-tarifafija">
+              <div class="form-grid">
+                <p class="field-hint" id="fixed-origin-hint">📍 Origen fijo: <strong>Assistenza Italiana, Antiguo Cuscatlán</strong></p>
+                <div class="form-group">
+                  <label class="field-label" for="fixed-destino">Destino</label>
+                  <select class="field-select" id="fixed-destino">
+                    <option value="" disabled selected>Elige tu destino…</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="quote-box" id="quote-tarifafija">
+                <div class="quote-info" aria-live="polite">
+                  <span class="quote-route" id="quote-tarifafija-route"></span>
+                  <span class="quote-price" id="quote-tarifafija-price"></span>
+                  <span class="quote-eta" id="quote-tarifafija-eta"></span>
+                  <span class="quote-disclaimer">Tarifa fija acordada con el cliente. Los destinos marcados como negociables pueden variar ligeramente.</span>
+                </div>
+                <button type="button" class="btn btn-gold btn-wa btn-sm" id="wa-tarifafija">Revisar y confirmar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="stop-spacer"></div>
+      </article>
+
     </div>
   </section>
 
@@ -512,8 +555,9 @@
 <footer class="site-footer">
   <div class="wrap footer-grid">
     <div class="footer-brand">
-      <a href="#top" class="brand"><span class="brand-mark"><span>360</span></span><span class="brand-word">Movilidad 360 SV</span></a>
+      <a href="#top" class="brand"><img class="brand-mark-img" src="img/brand/logo-mark.png" alt="Movilidad 360 SV" width="40" height="40"><span class="brand-word">Movilidad 360 SV</span></a>
       <p class="footer-tagline">"Nosotros te llevamos. Tú disfruta del camino."</p>
+      <img class="footer-logo-full" src="img/brand/logo-full.jpg" alt="Movilidad 360 SV — Vamos contigo, llegamos por ti, conectamos destinos" loading="lazy" width="220" height="220">
     </div>
     <div class="footer-col">
       <h5>Servicios</h5>
@@ -524,6 +568,7 @@
         <li><a href="#stop-departamento">Viajes interdepartamentales</a></li>
         <li><a href="#stop-turismo">Turismo en El Salvador</a></li>
         <li><a href="#stop-mudanza">Mudanzas</a></li>
+        <li><a href="#stop-tarifafija">Tarifas fijas</a></li>
       </ul>
     </div>
     <div class="footer-col">
