@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://movilidad360sv.com/sitemap.xml
