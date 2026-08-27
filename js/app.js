@@ -226,7 +226,7 @@
   /* ---------------- Pasajeros y mascotas ----------------
      Se inyecta el mismo control (pasajeros + mascota) en las 4 paradas
      de viaje (no en encomiendas, que no lleva personas). */
-  const TRAVEL_PREFIXES = ["movilizarte", "aeropuerto", "departamento", "turismo"];
+  const TRAVEL_PREFIXES = ["movilizarte", "aeropuerto", "departamento", "turismo", "tarifafija"];
   const paxPetsState = {};
 
   function injectPaxPetsControls(prefix) {
@@ -762,6 +762,74 @@
   const debouncedMudanzaQuote = debounce(updateMudanzaQuote, 250);
 
   /* =====================================================================
+     PARADA 7 — Tarifas fijas (precios ya acordados con el cliente desde un
+     origen fijo; no usan geolocalización ni cálculo de distancia)
+     ===================================================================== */
+  let fixedRouteIdx = null;
+
+  function renderFixedRoutes() {
+    const select = $("#fixed-destino");
+    if (!select) return;
+    select.innerHTML =
+      `<option value="" disabled${fixedRouteIdx == null ? " selected" : ""}>Elige tu destino…</option>` +
+      FIXED_ROUTES.destinations
+        .map(
+          (d, i) =>
+            `<option value="${i}"${fixedRouteIdx === i ? " selected" : ""}>${d.name} — ${formatMoney(d.price)}${d.negotiable ? " (negociable)" : ""}</option>`
+        )
+        .join("");
+  }
+
+  function updateFixedQuote() {
+    const dest = FIXED_ROUTES.destinations[fixedRouteIdx];
+    if (!dest) return;
+    $("#quote-tarifafija-route").textContent = `${FIXED_ROUTES.origin} → ${dest.name}`;
+    $("#quote-tarifafija-price").textContent = formatMoney(dest.price);
+    $("#quote-tarifafija-eta").textContent = dest.negotiable
+      ? "Precio negociable, se confirma por WhatsApp."
+      : "Precio fijo, sin cálculo de distancia.";
+    $("#quote-tarifafija").classList.add("show");
+
+    const waBtn = $("#wa-tarifafija");
+    if (waBtn) {
+      waBtn.onclick = () => {
+        const { passengers, pets } = paxPetsFor("tarifafija");
+        openConfirmModal({
+          price: dest.price,
+          rows: [
+            { label: "Servicio", value: "Tarifa fija" },
+            { label: "Desde", value: FIXED_ROUTES.origin },
+            { label: "Hasta", value: dest.name },
+            { label: "Precio", value: formatMoney(dest.price) + (dest.negotiable ? " (negociable)" : "") },
+          ],
+          buildMessage: (paymentMethod) =>
+            `Hola *MOVILIDAD 360 SV* 👋\n\n` +
+            `Quiero reservar un viaje con *tarifa fija*:\n` +
+            `📍 Desde: ${FIXED_ROUTES.origin}\n` +
+            `🎯 Hasta: ${dest.name}\n` +
+            `💵 Precio: ${formatMoney(dest.price)}${dest.negotiable ? " (negociable, a confirmar)" : ""}\n` +
+            `👥 Pasajeros: ${passengers}\n` +
+            `🐾 Mascota: ${pets ? "Sí" : "No"}\n` +
+            `💳 Método de pago: ${paymentMethod}` +
+            `\n⚠️ ${cancellationLine(dest.price)}` +
+            `\n\n¿Podrían confirmar disponibilidad?`,
+        });
+      };
+    }
+    persistAll();
+  }
+
+  function wireFixedRoutesForm() {
+    renderFixedRoutes();
+    const select = $("#fixed-destino");
+    if (!select) return;
+    select.addEventListener("change", () => {
+      fixedRouteIdx = select.value === "" ? null : Number(select.value);
+      if (fixedRouteIdx != null) updateFixedQuote();
+    });
+  }
+
+  /* =====================================================================
      PARADA 4 — ¿Viajar a otro departamento?
      ===================================================================== */
   function renderDepartments() {
@@ -1249,22 +1317,51 @@
   function renderVehicles() {
     const grid = $("#vehicles-grid");
     if (!grid) return;
-    grid.innerHTML = VEHICLES.map(
-      (v, i) => `
+    grid.innerHTML = VEHICLES.map((v, i) => {
+      const photos = v.photos && v.photos.length ? v.photos : v.photo ? [v.photo] : [];
+      return `
       <button type="button" class="vehicle-card" data-idx="${i}">
         <div class="vehicle-media">
           ${
-            v.photo
-              ? `<img src="${v.photo}" alt="${v.type}" loading="lazy">`
+            photos.length
+              ? `<img class="vehicle-photo" src="${photos[0]}" alt="${v.type}" loading="lazy" data-photos='${JSON.stringify(photos)}' data-photo-idx="0">`
               : `<svg class="vehicle-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${VEHICLE_ICONS[v.icon] || ""}</svg>`
+          }
+          ${
+            photos.length > 1
+              ? `<div class="vehicle-media-dots">${photos.map((_, di) => `<span class="vehicle-media-dot${di === 0 ? " on" : ""}"></span>`).join("")}</div>`
+              : ""
           }
         </div>
         <h4>${v.type}</h4>
         <p class="vehicle-capacity">${v.capacity}</p>
         <p class="vehicle-desc">${v.desc}</p>
-      </button>`
-    ).join("");
+      </button>`;
+    }).join("");
     wireVehicleCardTilt();
+    wireVehiclePhotoRotation();
+  }
+
+  // Para tipos de vehículo con varias fotos reales (ej. Sedán), las va
+  // rotando automáticamente para mostrar que puede llegar cualquiera de
+  // esos autos — el cliente no elige el vehículo específico.
+  function wireVehiclePhotoRotation() {
+    $$(".vehicle-photo[data-photos]").forEach((img) => {
+      let photos;
+      try {
+        photos = JSON.parse(img.dataset.photos);
+      } catch (err) {
+        return;
+      }
+      if (photos.length < 2) return;
+      const dots = img.parentElement.querySelectorAll(".vehicle-media-dot");
+      setInterval(() => {
+        const next = (Number(img.dataset.photoIdx) + 1) % photos.length;
+        img.dataset.photoIdx = String(next);
+        img.src = photos[next];
+        dots.forEach((d, i) => d.classList.toggle("on", i === next));
+      }, 3200);
+    });
   }
 
   // Efecto de tarjeta "fluida": inclinación 3D que sigue el cursor, para
@@ -1425,7 +1522,7 @@
 
   function persistAll() {
     try {
-      const state = { travel: {}, parcel: null, mudanza: null, tourismRoute: null };
+      const state = { travel: {}, parcel: null, mudanza: null, tourismRoute: null, fixedRoute: null };
       TRAVEL_PREFIXES.forEach((prefix) => {
         const selection = {
           movilizarte: lastMovilizarteSelection,
@@ -1470,6 +1567,9 @@
           toName: $("#mudanza-to") ? $("#mudanza-to").value : "",
           notes: $("#mudanza-notes") ? $("#mudanza-notes").value : "",
         };
+      }
+      if (fixedRouteIdx != null) {
+        state.fixedRoute = { idx: fixedRouteIdx, paxPets: paxPetsState.tarifafija || { pax: 1, pets: false } };
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (err) {
@@ -1553,6 +1653,13 @@
       if (state.parcel.fromPoint) $("#parcel-from-map-hint").textContent = "Punto marcado en el mapa ✓";
       if (state.parcel.toPoint) $("#parcel-to-map-hint").textContent = "Punto marcado en el mapa ✓";
       updateParcelQuote();
+    }
+
+    if (state.fixedRoute && FIXED_ROUTES.destinations[state.fixedRoute.idx]) {
+      fixedRouteIdx = state.fixedRoute.idx;
+      renderFixedRoutes();
+      if (state.fixedRoute.paxPets) applyPaxPetsUi("tarifafija", state.fixedRoute.paxPets.pax, state.fixedRoute.paxPets.pets);
+      updateFixedQuote();
     }
   }
 
@@ -1653,6 +1760,9 @@
 
     // Parada 6
     wireMudanzaForm();
+
+    // Parada 7
+    wireFixedRoutesForm();
 
     // Trabaja con nosotros
     wireJoinUsLink();

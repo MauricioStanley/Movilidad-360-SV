@@ -161,18 +161,20 @@ const TESTIMONIALS = [
 
 /* ---------- Vehículos disponibles ----------
    Ilustrativo: el cliente no elige el vehículo específico, solo el tipo
-   que probablemente lo recogerá. La foto del vehículo asignado se envía
-   por WhatsApp antes del viaje.
+   que probablemente lo recogerá. Se le enviará el vehículo que esté
+   disponible en el momento del viaje, y su foto se confirma por WhatsApp
+   antes de recogerlo.
    ⚠️ REEMPLAZAR: cuando tengan fotos reales de los vehículos, agreguen
-   un campo "photo": "ruta/a/la/foto.jpg" en cada objeto — la tarjeta lo
-   usará automáticamente en vez del ícono. */
+   un campo "photo": "ruta/a/la/foto.jpg" (una sola foto) o "photos": [...]
+   (varias fotos que rotan en la tarjeta) — se usan automáticamente en vez
+   del ícono. */
 const VEHICLES = [
   {
     type: "Sedán",
     capacity: "Hasta 4 pasajeros",
-    desc: "Ideal para viajes locales y traslados individuales o en pareja.",
+    desc: "Ideal para viajes locales y traslados individuales o en pareja. Te enviamos el sedán disponible en el momento.",
     icon: "sedan",
-    photo: null,
+    photos: ["img/vehicles/sedan-1.jpg", "img/vehicles/sedan-2.jpg", "img/vehicles/sedan-3.jpg"],
   },
   {
     type: "Camioneta",
@@ -193,9 +195,50 @@ const VEHICLES = [
     capacity: "Mudanzas y carga",
     desc: "Para mudanzas pequeñas, muebles y carga voluminosa.",
     icon: "pickup",
-    photo: null,
+    photo: "img/vehicles/pickup-1.jpg",
   },
 ];
+
+/* ---------- Tarifas fijas ----------
+   Precios ya negociados por el cliente para un punto de origen fijo.
+   No usan geolocalización ni distancia calculada: el precio es el mismo
+   siempre que se salga desde "origin". Si algún destino es negociable
+   (el precio puede variar), márcalo con "negotiable: true". */
+const FIXED_ROUTES = {
+  origin: "Assistenza Italiana, Antiguo Cuscatlán",
+  destinations: [
+    { name: "Hospital El Salvador", price: 4 },
+    { name: "Hospital de la Mujer", price: 7 },
+    { name: "Hospital Militar", price: 10 },
+    { name: "Hospital de Diagnóstico", price: 7 },
+    { name: "Hospital San Rafael", price: 7 },
+    { name: "Hospital Ilamatepec", price: 10 },
+    { name: "Hospital Zacamil", price: 15 },
+    { name: "Aeropuerto Internacional", price: 40 },
+    { name: "Aeropuerto de Ilopango", price: 20 },
+    { name: "Hotel Intercontinental", price: 8 },
+    { name: "Hotel Holiday Inn", price: 7 },
+    { name: "Hotel Hilton Escalón", price: 7 },
+    { name: "Terminal del Sur", price: 15 },
+    { name: "Terminal de Occidente", price: 5 },
+    { name: "Terminal Nuevo Amanecer", price: 20 },
+    { name: "Terminal de Chalatenango", price: 12 },
+    { name: "Terminal del Puerto La Libertad", price: 8 },
+    { name: "Centro Histórico", price: 8 },
+    { name: "San Jacinto", price: 8 },
+    { name: "San Marcos", price: 15 },
+    { name: "Santo Tomás", price: 15, negotiable: true },
+    { name: "Santiago Texacuangos", price: 20 },
+    { name: "Olocuilta", price: 25 },
+    { name: "Santa Tecla", price: 8 },
+    { name: "Mejicanos", price: 15 },
+    { name: "Apopa", price: 25 },
+    { name: "Soyapango", price: 25 },
+    { name: "Ilopango", price: 20 },
+    { name: "San Luis Talpa", price: 35 },
+    { name: "San Juan Talpa", price: 30 },
+  ],
+};
 
 /* ---------- Rutas turísticas sugeridas ----------
    Combinan varios destinos de TOURIST_PLACES (por nombre) en un solo
