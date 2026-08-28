@@ -3,14 +3,14 @@
    si hay internet siempre se sirve la versión más nueva del servidor y la
    caché queda solo como respaldo offline. Así cada actualización del sitio
    se refleja de inmediato, sin tener que recargar dos veces. */
-const CACHE_NAME = "movilidad360-shell-v4";
+const CACHE_NAME = "movilidad360-shell-v5";
 const SHELL_FILES = [
   "./",
   "./index.html",
-  "./css/styles.css?v=4",
-  "./js/data.js?v=4",
-  "./js/app.js?v=4",
-  "./js/enhance.js?v=4",
+  "./css/styles.css?v=5",
+  "./js/data.js?v=5",
+  "./js/app.js?v=5",
+  "./js/enhance.js?v=5",
 ];
 
 self.addEventListener("install", (event) => {
@@ -36,8 +36,11 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return; // no interceptar OSRM/Nominatim/tiles/fuentes
 
+  // "no-store" fuerza a que el navegador siempre pida la versión real al
+  // servidor, ignorando su propia caché HTTP (GitHub Pages permite
+  // cachear hasta 10 min) — así "red primero" es red primero de verdad.
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: "no-store" })
       .then((res) => {
         if (res && res.ok) {
           const clone = res.clone();
