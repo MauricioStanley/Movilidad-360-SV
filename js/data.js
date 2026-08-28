@@ -285,10 +285,6 @@ const FAQS = [
     a: `Sí. Si el viaje cuesta $${CONFIG.cancellation.freeThresholdUsd} o menos, puedes cancelar sin ningún cargo. Si cuesta más de $${CONFIG.cancellation.freeThresholdUsd}, la cancelación tiene un cargo del ${CONFIG.cancellation.feePercent}% del valor del viaje. Esta política se muestra siempre antes de confirmar tu reserva.`,
   },
   {
-    q: "¿Los conductores hablan inglés?",
-    a: "[Reemplazar: indica si tus conductores pueden atender a turistas que no hablan español.]",
-  },
-  {
     q: "¿El viaje tiene algún tipo de seguro?",
     a: "Nuestro compromiso es finalizar el viaje sin importar las condiciones: si ocurre un imprevisto en el camino (clima, tráfico, un desperfecto del vehículo), garantizamos que llegues a tu destino.",
   },
