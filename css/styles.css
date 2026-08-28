@@ -54,6 +54,7 @@ body {
   color: var(--paper);
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  font-variant-numeric: tabular-nums;
 }
 img, svg { display: block; max-width: 100%; }
 a { color: inherit; }
@@ -65,6 +66,15 @@ h1, h2, h3, h4, p { margin: 0; }
   outline-offset: 3px;
   border-radius: 4px;
 }
+
+/* Superficies del navegador que también llevan la marca: selección de
+   texto y barra de scroll, en vez de dejarlas en su gris por defecto. */
+::selection { background: var(--green-500); color: var(--blue-950); }
+html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--blue-900); }
+::-webkit-scrollbar-thumb { background: var(--blue-600); border-radius: 999px; border: 2px solid var(--blue-900); }
+::-webkit-scrollbar-thumb:hover { background: var(--green-500); }
 
 .wrap { width: var(--container); margin-inline: auto; }
 .eyebrow {
@@ -293,10 +303,13 @@ h1, h2, h3, h4, p { margin: 0; }
   left: 30px;
   top: 0;
   width: 3px;
-  height: 0%;
+  height: 100%;
+  transform: scaleY(0);
+  transform-origin: top;
   background: linear-gradient(180deg, var(--green-400), var(--silver-500));
-  transition: height 0.15s linear;
+  transition: transform 0.15s linear;
   border-radius: 3px;
+  will-change: transform;
 }
 @media (min-width: 900px) {
   .spine-track, .spine-progress { left: 50%; transform: translateX(-50%); }
@@ -489,6 +502,7 @@ h1, h2, h3, h4, p { margin: 0; }
   gap: 0.55rem;
 }
 .option-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-sm); border-color: var(--silver-400); }
+.option-card:active { transform: scale(0.98); }
 .option-card.selected { border-color: var(--green-500); box-shadow: 0 0 0 3px rgba(124,179,66,0.2); }
 .option-card-top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0.35rem 0.5rem; }
 /* En tarjetas muy angostas la etiqueta (ej. "Ruta de las Flores") baja a
@@ -518,6 +532,7 @@ h1, h2, h3, h4, p { margin: 0; }
   transition: all 0.15s ease;
 }
 .chip.active, .chip:hover { border-color: var(--green-500); background: rgba(124, 179, 66, 0.18); color: var(--green-300); }
+.chip:active { transform: scale(0.94); }
 
 /* ---------- Forms (encomienda) ---------- */
 .form-grid { display: grid; gap: 1.1rem; }
@@ -543,13 +558,15 @@ h1, h2, h3, h4, p { margin: 0; }
   transition: all 0.15s ease;
 }
 .pill-option:hover { border-color: var(--silver-400); }
+.pill-option:active { transform: scale(0.95); }
 .pill-option.selected { border-color: var(--green-500); background: var(--green-500); color: var(--blue-950); }
 .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.9rem 1.05rem; border: 1.5px solid var(--border-soft); border-radius: var(--radius-md); background: var(--blue-800); }
 .switch-row .switch-label { font-weight: 700; font-size: 0.88rem; color: var(--paper); }
 .switch-row .switch-sub { font-size: 0.76rem; color: var(--paper-dim); margin-top: 0.15rem; }
 .switch {
-  position: relative; width: 46px; height: 26px; border-radius: 999px; background: var(--blue-700); border: none; cursor: pointer; flex-shrink: 0; transition: background 0.2s ease;
+  position: relative; width: 46px; height: 26px; border-radius: 999px; background: var(--blue-700); border: none; cursor: pointer; flex-shrink: 0; transition: background 0.2s ease, transform 0.15s ease;
 }
+.switch:active { transform: scale(0.93); }
 .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform 0.2s ease; box-shadow: var(--shadow-sm); }
 .switch.on { background: var(--green-500); }
 .switch.on::after { transform: translateX(20px); }
@@ -680,8 +697,10 @@ h1, h2, h3, h4, p { margin: 0; }
   line-height: 1;
   cursor: pointer;
   display: grid; place-items: center;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.15s ease;
 }
 .stepper-btn:hover { background: var(--green-500); border-color: var(--green-500); color: var(--blue-950); }
+.stepper-btn:active { transform: scale(0.9); }
 .stepper-value { font-family: var(--font-mono); font-weight: 700; min-width: 1.4ch; text-align: center; color: var(--paper); }
 .pets-row { flex: 1; min-width: 200px; padding: 0.6rem 0.9rem; }
 .pets-row .switch-label { font-size: 0.85rem; }
@@ -710,7 +729,9 @@ h1, h2, h3, h4, p { margin: 0; }
   font-weight: 700;
   text-decoration: underline;
   cursor: pointer;
+  transition: opacity 0.15s ease;
 }
+.quote-route-link:active { opacity: 0.6; }
 .btn-wa.is-loading { opacity: 0.55; pointer-events: none; }
 
 /* ---------- Cobertura (mapa) ---------- */
@@ -744,6 +765,7 @@ h1, h2, h3, h4, p { margin: 0; }
 .vehicle-card {
   --rx: 0deg;
   --ry: 0deg;
+  --scale: 1;
   appearance: none;
   font: inherit;
   background: var(--blue-900);
@@ -753,7 +775,7 @@ h1, h2, h3, h4, p { margin: 0; }
   box-shadow: var(--shadow-sm);
   text-align: center;
   cursor: pointer;
-  transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry)) scale(1);
+  transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry)) scale(var(--scale));
   transition: transform 0.15s ease-out, box-shadow 0.25s ease, border-color 0.25s ease;
   will-change: transform;
 }
@@ -761,6 +783,7 @@ h1, h2, h3, h4, p { margin: 0; }
   box-shadow: 0 22px 45px -18px rgba(0,0,0,0.6);
   border-color: var(--silver-400);
 }
+.vehicle-card:active { --scale: 0.97; }
 .vehicle-card.selected {
   border-color: var(--green-500);
   box-shadow: 0 0 0 3px rgba(124,179,66,0.25), 0 22px 45px -18px rgba(0,0,0,0.6);
@@ -893,7 +916,9 @@ h1, h2, h3, h4, p { margin: 0; }
   font-size: 0.92rem;
   text-align: left;
   cursor: pointer;
+  transition: background 0.15s ease;
 }
+.faq-question:active { background: rgba(255,255,255,0.05); }
 .faq-question svg { flex-shrink: 0; transition: transform 0.25s ease; color: var(--green-300); }
 .faq-question.open svg { transform: rotate(45deg); }
 .faq-answer {

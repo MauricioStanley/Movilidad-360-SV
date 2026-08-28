@@ -1700,8 +1700,10 @@
       const vh = window.innerHeight;
       const total = rect.height;
       const scrolled = Math.min(Math.max(vh * 0.5 - rect.top, 0), total);
-      const pct = total > 0 ? (scrolled / total) * 100 : 0;
-      progressEl.style.height = pct + "%";
+      const pct = total > 0 ? scrolled / total : 0;
+      // scaleY en vez de height: evita recalcular layout en cada frame de
+      // scroll, solo composita (más fluido en móviles de gama baja).
+      progressEl.style.transform = `scaleY(${pct})`;
       ticking = false;
     }
     window.addEventListener(
