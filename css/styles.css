@@ -106,7 +106,7 @@ h1, h2, h3, h4, p { margin: 0; }
   white-space: nowrap;
 }
 .btn:hover { transform: translateY(-2px); }
-.btn:active { transform: translateY(0); }
+.btn:active { transform: translateY(0) scale(0.985); }
 .btn-gold {
   background: linear-gradient(180deg, var(--green-400), var(--green-500));
   color: var(--blue-950);
@@ -125,9 +125,16 @@ h1, h2, h3, h4, p { margin: 0; }
   color: var(--paper);
 }
 .btn-outline-ink:hover { background: var(--green-500); border-color: var(--green-500); color: var(--blue-950); }
-.btn-sm { padding: 0.55rem 1.05rem; font-size: 0.82rem; }
-.btn-wa svg { width: 18px; height: 18px; }
+.btn-sm { padding: 0.6rem 1.1rem; font-size: 0.82rem; min-height: 44px; }
+.btn-wa svg { width: 18px; height: 18px; flex-shrink: 0; }
 .btn[disabled] { opacity: 0.45; cursor: not-allowed; transform: none; }
+/* Los CTA de WhatsApp llevan etiquetas largas ("Reserva tu viaje con
+   MOVILIDAD 360 SV"). En pantallas muy angostas se permiten en dos líneas
+   para que no se salgan del borde (iPhone SE ≈ 375px). */
+@media (max-width: 400px) {
+  .hero-cta .btn-wa,
+  .cta-final .btn-wa { white-space: normal; text-align: center; max-width: 100%; }
+}
 
 /* ---------- Header ---------- */
 .site-header {
@@ -352,7 +359,9 @@ h1, h2, h3, h4, p { margin: 0; }
   transition: max-height 0.5s cubic-bezier(.2,.8,.2,1), opacity 0.4s ease, margin-top 0.4s ease;
   margin-top: 0;
 }
-.panel.open { max-height: 2400px; opacity: 1; margin-top: 1.4rem; }
+/* Cap holgado: el panel de turismo abierto puede superar 4300px en móvil
+   (rutas + chips + destinos). 2400px lo recortaba. */
+.panel.open { max-height: 6000px; opacity: 1; margin-top: 1.4rem; }
 
 /* ---------- Search field ---------- */
 .search-field {
@@ -486,7 +495,10 @@ h1, h2, h3, h4, p { margin: 0; }
 .chip {
   font-family: var(--font-mono);
   font-size: 0.72rem;
-  padding: 0.4rem 0.85rem;
+  padding: 0.5rem 0.9rem;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
   border-radius: 999px;
   border: 1px solid var(--border-soft);
   background: var(--blue-800);
@@ -648,7 +660,7 @@ h1, h2, h3, h4, p { margin: 0; }
 .stepper-group .field-label { margin: 0; }
 .stepper { display: flex; align-items: center; gap: 0.6rem; }
 .stepper-btn {
-  width: 30px; height: 30px;
+  width: 34px; height: 34px;
   border-radius: 50%;
   border: 1.5px solid var(--border-soft);
   background: transparent;
@@ -934,3 +946,53 @@ h1, h2, h3, h4, p { margin: 0; }
 }
 .confirm-cancellation.is-fee { background: rgba(224,153,58,0.16); color: #eab35c; }
 .confirm-insurance { font-size: 0.8rem; color: var(--paper-dim); margin: 0; }
+
+/* =========================================================================
+   MOVIMIENTO — capa aditiva
+   El "momento" de la página es el viaje: la ruta del hero fluye, cada
+   parada entra desde su lado de la línea vertical, y el contador de viajes
+   sube una sola vez. Todo se activa solo con .js-motion (lo pone enhance.js
+   cuando hay JS y el usuario NO pidió menos movimiento) para que sin JS o
+   con "reduce" el contenido quede visible y quieto.
+   ========================================================================= */
+
+/* Header: gana elevación al separarse del inicio */
+.site-header { transition: box-shadow .25s ease, background-color .25s ease; }
+.site-header.scrolled {
+  background: rgba(10, 22, 40, 0.94);
+  box-shadow: 0 12px 30px -16px rgba(0, 0, 0, 0.65);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* La ruta del hero: los guiones avanzan lentamente, como tránsito. */
+  .js-motion .hero-road path { animation: road-flow 5.5s linear infinite; }
+  .js-motion .hero-road path:nth-of-type(2) { animation-duration: 8s; }
+  @keyframes road-flow { to { stroke-dashoffset: -240; } }
+
+  /* Cada parada llega desde su lado de la línea (usa .in-view, que ya
+     activa app.js con IntersectionObserver). */
+  .js-motion .stop .stop-card {
+    opacity: 0;
+    transform: translateY(26px);
+    transition: opacity .6s cubic-bezier(.22,.7,.2,1), transform .6s cubic-bezier(.22,.7,.2,1);
+  }
+  .js-motion .stop.in-view .stop-card { opacity: 1; transform: none; }
+  @media (min-width: 900px) {
+    .js-motion .stop:nth-child(odd)  .stop-card { transform: translateX(-34px); }
+    .js-motion .stop:nth-child(even) .stop-card { transform: translateX(34px); }
+    .js-motion .stop.in-view .stop-card { transform: none; }
+  }
+
+  /* Rejillas de tarjetas con entrada escalonada (solo flota y guías). */
+  .js-motion .reveal-grid > * {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity .5s cubic-bezier(.22,.7,.2,1), transform .5s cubic-bezier(.22,.7,.2,1);
+    transition-delay: calc(var(--i, 0) * 60ms);
+  }
+  .js-motion .reveal-grid.is-visible > * { opacity: 1; transform: none; }
+
+  /* Botón flotante de WhatsApp: aparece al asentarse la página. */
+  .js-motion .wa-float { animation: wa-pop .45s cubic-bezier(.22,.7,.2,1) .6s both; }
+  @keyframes wa-pop { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: scale(1); } }
+}

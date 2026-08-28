@@ -2,8 +2,8 @@
    instalable ("Agregar a pantalla de inicio") y cargue más rápido en
    visitas repetidas. No intenta funcionar offline para las cotizaciones
    (necesitan internet para calcular rutas reales). */
-const CACHE_NAME = "movilidad360-shell-v1";
-const SHELL_FILES = ["./", "./index.html", "./css/styles.css", "./js/data.js", "./js/app.js"];
+const CACHE_NAME = "movilidad360-shell-v2";
+const SHELL_FILES = ["./", "./index.html", "./css/styles.css?v=2", "./js/data.js?v=2", "./js/app.js?v=2", "./js/enhance.js?v=2"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
