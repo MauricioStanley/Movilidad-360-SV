@@ -1577,9 +1577,19 @@
      PWA: registro del service worker (instalable / carga más rápida)
      ===================================================================== */
   function registerServiceWorker() {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("sw.js").catch(() => {});
-    }
+    if (!("serviceWorker" in navigator)) return;
+    // Si una pestaña queda abierta y publicamos una actualización, el
+    // navegador instala el nuevo service worker en segundo plano pero la
+    // pestaña sigue mostrando el código viejo hasta que recarga. Con esto,
+    // en cuanto el nuevo worker toma control, recargamos una sola vez
+    // automáticamente para que nadie se quede con una versión desactualizada.
+    let refreshed = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (refreshed) return;
+      refreshed = true;
+      window.location.reload();
+    });
+    navigator.serviceWorker.register("sw.js").catch(() => {});
   }
 
   /* =====================================================================
