@@ -450,6 +450,7 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
 .suggestion-name { font-weight: 700; font-size: 0.92rem; color: var(--paper); }
 .suggestion-meta { font-size: 0.76rem; color: var(--paper-dim); }
 .suggestion-tag { font-family: var(--font-mono); font-size: 0.68rem; padding: 0.2rem 0.5rem; border-radius: 999px; background: rgba(143,160,173,0.18); color: var(--silver-400); white-space: nowrap; }
+.suggestion-loading { font-size: 0.85rem; color: var(--paper-dim); padding: 0.9rem 0.2rem; text-align: center; }
 
 .empty-state {
   display: none;

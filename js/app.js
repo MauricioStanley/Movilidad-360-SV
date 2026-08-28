@@ -201,6 +201,29 @@
     }
   }
 
+  // Búsqueda de direcciones reales (Nominatim/OpenStreetMap) — respaldo
+  // cuando el lugar que el cliente escribe no está en nuestra lista
+  // curada de sitios populares. Así puede pedir un viaje a cualquier
+  // dirección real de El Salvador aunque no sepa marcarla en el mapa.
+  async function geocodeSearch(query) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=sv&limit=5&q=${encodeURIComponent(query)}`;
+      const res = await fetch(url, { signal: controller.signal, headers: { Accept: "application/json" } });
+      clearTimeout(timeoutId);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.map((d) => {
+        const parts = d.display_name.split(",").map((s) => s.trim());
+        return { name: parts.slice(0, 2).join(", "), fullName: d.display_name, lat: parseFloat(d.lat), lng: parseFloat(d.lon) };
+      });
+    } catch (err) {
+      clearTimeout(timeoutId);
+      return [];
+    }
+  }
+
   function requestGeolocation(cb) {
     const statusEl = $("#geo-status");
     const bannerEl = $(".geo-banner");
@@ -405,6 +428,8 @@
   /* =====================================================================
      PARADA 1 — ¿Necesitas movilizarte?
      ===================================================================== */
+  let localGeoToken = 0;
+
   function renderLocalSuggestions(filterText) {
     const list = $("#list-movilizarte");
     const empty = $("#empty-movilizarte");
@@ -413,29 +438,62 @@
       ? LOCAL_PLACES.filter((p) => norm(p.name).includes(q))
       : LOCAL_PLACES.slice(0, 8);
 
-    if (matches.length === 0) {
+    localGeoToken++; // cualquier búsqueda nueva invalida una geocodificación pendiente
+
+    if (matches.length > 0 || !q) {
+      empty.classList.remove("show");
+      renderSuggestionItems(list, matches, "Punto popular del área metropolitana", selectMovilizarteDestination);
+      return;
+    }
+
+    // No está en nuestra lista curada: si el cliente escribió algo con
+    // pinta de dirección real (3+ letras), la buscamos en OpenStreetMap
+    // para que pueda pedir el viaje aunque no sepa marcarla en el mapa.
+    if (filterText.trim().length < 3) {
       list.innerHTML = "";
       empty.classList.add("show");
       return;
     }
+    const token = localGeoToken;
     empty.classList.remove("show");
-    list.innerHTML = matches
+    list.innerHTML = `<p class="suggestion-loading">Buscando "${filterText}"…</p>`;
+    debouncedGeocode(filterText, (results) => {
+      if (token !== localGeoToken) return; // el cliente ya escribió otra cosa
+      if (!results.length) {
+        list.innerHTML = "";
+        empty.classList.add("show");
+        return;
+      }
+      renderSuggestionItems(list, results, null, selectMovilizarteDestination);
+    });
+  }
+
+  // Pinta una lista de sugerencias (lugares curados o resultados de
+  // geocodificación) con el mismo formato visual. Si no se pasa una
+  // descripción fija, usa la dirección completa devuelta por el buscador.
+  function renderSuggestionItems(list, items, fixedMeta, onSelect) {
+    list.innerHTML = items
       .map(
         (p, i) => `
       <button type="button" class="suggestion-item" data-idx="${i}">
         <span>
           <span class="suggestion-name">${p.name}</span><br>
-          <span class="suggestion-meta">Punto popular del área metropolitana</span>
+          <span class="suggestion-meta">${fixedMeta || `📍 ${p.fullName}`}</span>
         </span>
         <span class="suggestion-tag">Elegir</span>
       </button>`
       )
       .join("");
-
     $$(".suggestion-item", list).forEach((btn, i) => {
-      btn.addEventListener("click", () => selectMovilizarteDestination(matches[i]));
+      btn.addEventListener("click", () => onSelect(items[i]));
     });
   }
+
+  // Debounce específico para no saturar el servicio gratuito de
+  // geocodificación mientras el cliente sigue escribiendo.
+  const debouncedGeocode = debounce((query, cb) => {
+    geocodeSearch(query + ", El Salvador").then(cb);
+  }, 500);
 
   let lastMovilizarteSelection = null;
 
@@ -926,6 +984,8 @@
     });
   }
 
+  let touristGeoToken = 0;
+
   function renderTourism() {
     const q = norm(touristSearch);
     const filtered = TOURIST_PLACES.filter((p) => {
@@ -937,10 +997,10 @@
 
     const grid = $("#list-turismo");
     const empty = $("#empty-turismo");
+    touristGeoToken++;
 
     if (filtered.length === 0) {
-      grid.innerHTML = "";
-      empty.classList.add("show");
+      renderTourismGeoFallback(grid, empty);
       return;
     }
     empty.classList.remove("show");
@@ -969,6 +1029,53 @@
         $$(".option-card", grid).forEach((c) => c.classList.remove("selected"));
         card.classList.add("selected");
         selectTourism(filtered[i]);
+      });
+    });
+  }
+
+  // Respaldo cuando el destino turístico buscado no está en nuestra
+  // lista curada: lo busca como dirección real (OpenStreetMap) para que
+  // el cliente pueda pedir el viaje aunque no sepa marcarlo en el mapa.
+  function renderTourismGeoFallback(grid, empty) {
+    const query = touristSearch.trim();
+    if (query.length < 3) {
+      grid.innerHTML = "";
+      empty.classList.add("show");
+      return;
+    }
+    const token = touristGeoToken;
+    empty.classList.remove("show");
+    grid.innerHTML = `<p class="suggestion-loading">Buscando "${query}"…</p>`;
+    debouncedGeocode(query, (results) => {
+      if (token !== touristGeoToken) return;
+      if (!results.length) {
+        grid.innerHTML = "";
+        empty.classList.add("show");
+        return;
+      }
+      const origin = currentOrigin();
+      grid.innerHTML = results
+        .map((p, i) => {
+          const distanceKm = haversineKm(origin.lat, origin.lng, p.lat, p.lng);
+          return `
+          <button type="button" class="option-card" data-idx="${i}">
+            <div class="option-card-top">
+              <span class="option-title">${p.name}</span>
+            </div>
+            <span class="option-desc">📍 ${p.fullName}</span>
+            <div class="option-foot">
+              <span class="price">desde ${formatMoney(estimatePrice(distanceKm))}</span>
+              <span class="eta">${formatEta(estimateMinutes(distanceKm))}</span>
+            </div>
+          </button>`;
+        })
+        .join("");
+      $$(".option-card", grid).forEach((card, i) => {
+        card.addEventListener("click", () => {
+          $$(".option-card", grid).forEach((c) => c.classList.remove("selected"));
+          card.classList.add("selected");
+          selectTourism(results[i]);
+        });
       });
     });
   }
