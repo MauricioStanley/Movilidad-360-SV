@@ -350,8 +350,16 @@ h1, h2, h3, h4, p { margin: 0; }
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
+  white-space: normal;      /* etiquetas largas ("Ver aeropuertos cercanos") pueden partir */
+  text-align: left;
+  max-width: 100%;
 }
-.toggle-launch svg { transition: transform 0.25s ease; }
+.toggle-launch svg { transition: transform 0.25s ease; flex-shrink: 0; }
+/* En móvil los CTA de cada parada ocupan todo el ancho de la tarjeta:
+   etiqueta a la izquierda, icono "+" a la derecha. Evita que se salgan. */
+@media (max-width: 560px) {
+  .toggle-launch { display: flex; width: 100%; justify-content: space-between; padding-inline: 1.15rem; }
+}
 .panel {
   overflow: hidden;
   max-height: 0;
@@ -465,7 +473,7 @@ h1, h2, h3, h4, p { margin: 0; }
 .option-grid {
   display: grid;
   gap: 0.85rem;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
   margin-top: 0.9rem;
 }
 .option-card {
@@ -482,7 +490,10 @@ h1, h2, h3, h4, p { margin: 0; }
 }
 .option-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-sm); border-color: var(--silver-400); }
 .option-card.selected { border-color: var(--green-500); box-shadow: 0 0 0 3px rgba(124,179,66,0.2); }
-.option-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
+.option-card-top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0.35rem 0.5rem; }
+/* En tarjetas muy angostas la etiqueta (ej. "Ruta de las Flores") baja a
+   su propia línea en vez de salirse del borde. */
+.option-title { min-width: 0; }
 .option-title { font-weight: 800; font-size: 0.98rem; line-height: 1.25; color: var(--paper); }
 .option-badge { font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 0.25rem 0.5rem; border-radius: 999px; background: rgba(124,179,66,0.2); color: var(--green-300); white-space: nowrap; }
 .option-badge.teal { background: rgba(143,160,173,0.2); color: var(--silver-400); }
@@ -727,7 +738,7 @@ h1, h2, h3, h4, p { margin: 0; }
 .vehicles-grid {
   display: grid;
   gap: 1.2rem;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
   margin-top: 1.5rem;
 }
 .vehicle-card {
@@ -796,7 +807,7 @@ h1, h2, h3, h4, p { margin: 0; }
 .testimonials-grid {
   display: grid;
   gap: 1.2rem;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
   margin-top: 1.5rem;
 }
 .testimonial-card {
@@ -846,7 +857,7 @@ h1, h2, h3, h4, p { margin: 0; }
 .guides-grid {
   display: grid;
   gap: 1.2rem;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
   margin-top: 1.5rem;
 }
 .guide-card {
@@ -898,7 +909,7 @@ h1, h2, h3, h4, p { margin: 0; }
 .routes-grid {
   display: grid;
   gap: 0.85rem;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
   margin-top: 0.9rem;
 }
 .route-card {
