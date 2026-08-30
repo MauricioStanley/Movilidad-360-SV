@@ -36,7 +36,7 @@
 <meta name="apple-mobile-web-app-title" content="Movilidad 360">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="css/styles.css?v=6">
+<link rel="stylesheet" href="css/styles.css?v=7">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -597,15 +597,105 @@
           </ul>
         </div>
       </div>
-      <p class="join-note">📄 La documentación adicional (DUI, licencia, tarjeta de circulación, etc.) se solicita más adelante, durante el proceso de selección.</p>
+      <form class="join-form" id="join-form" novalidate>
+        <h3 class="join-subtitle">Completa tu solicitud</h3>
+        <div class="form-grid two-col">
+          <div class="form-group">
+            <label class="field-label" for="join-name">Nombre completo</label>
+            <div class="search-field"><input type="text" id="join-name" autocomplete="name" placeholder="Tu nombre completo"></div>
+          </div>
+          <div class="form-group">
+            <label class="field-label" for="join-phone">Teléfono / WhatsApp</label>
+            <div class="search-field"><input type="tel" id="join-phone" autocomplete="tel" placeholder="Ej. 7503-1132"></div>
+          </div>
+        </div>
+        <div class="form-grid two-col">
+          <div class="form-group">
+            <label class="field-label" for="join-age">Edad</label>
+            <div class="search-field"><input type="number" id="join-age" min="18" max="80" placeholder="Ej. 28"></div>
+          </div>
+          <div class="form-group">
+            <label class="field-label" for="join-location">Municipio y departamento</label>
+            <div class="search-field"><input type="text" id="join-location" placeholder="Ej. Santa Tecla, La Libertad"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="field-label" for="join-area">Área en la que deseas trabajar</label>
+          <select class="field-select" id="join-area">
+            <option value="" disabled selected>Elige un área…</option>
+            <option>Transporte de pasajeros</option>
+            <option>Encomiendas y entregas</option>
+            <option>Viajes dentro de El Salvador</option>
+            <option>Atención al cliente</option>
+            <option>Ventas y promoción de servicios</option>
+            <option>Otro servicio de movilidad</option>
+          </select>
+        </div>
+        <div class="form-grid two-col">
+          <div class="form-group">
+            <label class="field-label" for="join-schedule">Horarios disponibles</label>
+            <div class="search-field"><input type="text" id="join-schedule" placeholder="Ej. tiempo completo, fines de semana…"></div>
+          </div>
+          <div class="form-group">
+            <label class="field-label" for="join-experience">Experiencia relacionada (opcional)</label>
+            <div class="search-field"><input type="text" id="join-experience" placeholder="Ej. 2 años como repartidor"></div>
+          </div>
+        </div>
 
-      <div class="join-cta">
-        <p>Escríbenos por WhatsApp con esta información y nuestro equipo revisará tu perfil. Si se ajusta a las oportunidades disponibles, nos pondremos en contacto contigo.</p>
-        <a id="join-us-wa" class="btn btn-gold btn-wa" href="#" target="_blank" rel="noopener">
+        <div class="switch-row">
+          <div>
+            <span class="switch-label">¿Aplicas como conductor?</span>
+            <p class="switch-sub">Te pediremos algunos datos adicionales de tu vehículo.</p>
+          </div>
+          <button type="button" class="switch" id="join-driver-toggle" aria-pressed="false" aria-controls="join-driver-fields" aria-label="¿Aplicas como conductor?"></button>
+        </div>
+
+        <div class="join-driver-fields" id="join-driver-fields">
+          <div class="form-grid two-col">
+            <div class="form-group">
+              <label class="field-label" for="join-license">Tipo de licencia</label>
+              <div class="search-field"><input type="text" id="join-license" placeholder="Ej. Liviana, pesada…"></div>
+            </div>
+            <div class="form-group">
+              <label class="field-label" for="join-own-vehicle">¿Vehículo propio?</label>
+              <select class="field-select" id="join-own-vehicle">
+                <option value="" disabled selected>Elige…</option>
+                <option>Sí</option>
+                <option>No</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-grid two-col">
+            <div class="form-group">
+              <label class="field-label" for="join-vehicle-info">Marca, modelo y año</label>
+              <div class="search-field"><input type="text" id="join-vehicle-info" placeholder="Ej. Kia Rio 2015"></div>
+            </div>
+            <div class="form-group">
+              <label class="field-label" for="join-vehicle-type">Tipo de vehículo</label>
+              <select class="field-select" id="join-vehicle-type">
+                <option value="" disabled selected>Elige…</option>
+                <option>Sedán</option>
+                <option>Camioneta</option>
+                <option>Microbús</option>
+                <option>Pick up</option>
+                <option>Otro</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="field-label" for="join-driver-experience">Experiencia transportando pasajeros o encomiendas</label>
+            <div class="search-field"><input type="text" id="join-driver-experience" placeholder="Ej. 3 años en plataformas de transporte"></div>
+          </div>
+        </div>
+
+        <p class="join-note">📄 La documentación adicional (DUI, licencia, tarjeta de circulación, etc.) se solicita más adelante, durante el proceso de selección.</p>
+        <p class="join-form-error" id="join-form-error" hidden>Escribe al menos tu nombre y tu teléfono para poder contactarte.</p>
+
+        <button type="submit" class="btn btn-gold btn-wa" id="join-us-wa">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.5 14.4c-.3-.1-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.1-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.5-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1.1 2.8 1.2 3c.1.2 2.2 3.4 5.3 4.7.7.3 1.3.5 1.8.7.7.2 1.4.2 1.9.1.6-.1 1.7-.7 2-1.4.2-.7.2-1.2.1-1.4-.1-.1-.3-.2-.6-.3z"/><path d="M12 2C6.5 2 2 6.5 2 12c0 1.9.5 3.7 1.5 5.3L2 22l4.8-1.4C8.3 21.5 10.1 22 12 22c5.5 0 10-4.5 10-10S17.5 2 12 2zm0 18.2c-1.7 0-3.3-.5-4.7-1.3l-.3-.2-3 .8.8-2.9-.2-.3C3.7 15 3.2 13.5 3.2 12c0-4.8 3.9-8.8 8.8-8.8s8.8 3.9 8.8 8.8-3.9 8.8-8.8 8.8z"/></svg>
-          Aplicar por WhatsApp
-        </a>
-      </div>
+          Enviar solicitud por WhatsApp
+        </button>
+      </form>
     </div>
   </section>
 
@@ -740,8 +830,8 @@
   </div>
 </div>
 
-<script src="js/data.js?v=6"></script>
-<script src="js/app.js?v=6"></script>
-<script src="js/enhance.js?v=6"></script>
+<script src="js/data.js?v=7"></script>
+<script src="js/app.js?v=7"></script>
+<script src="js/enhance.js?v=7"></script>
 </body>
 </html>
