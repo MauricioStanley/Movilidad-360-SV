@@ -1514,6 +1514,58 @@
     wireVehiclePhotoRotation();
   }
 
+  // Junta los conductores reales desde VEHICLES (un mismo conductor puede
+  // manejar más de una unidad, ej. Edwin maneja el Spark y el Forland — en
+  // ese caso aparece una sola vez con ambos tipos de vehículo listados).
+  function collectDrivers() {
+    const map = new Map();
+    VEHICLES.forEach((v) => {
+      (v.units || []).forEach((u) => {
+        if (!u.driverName) return;
+        if (!map.has(u.driverName)) {
+          map.set(u.driverName, {
+            name: u.driverName,
+            photo: u.driverPhoto,
+            trips: u.trips,
+            experience: u.experience,
+            vehicleTypes: [],
+          });
+        }
+        const driver = map.get(u.driverName);
+        if (!driver.vehicleTypes.includes(v.type)) driver.vehicleTypes.push(v.type);
+      });
+    });
+    return Array.from(map.values());
+  }
+
+  function renderDrivers() {
+    const section = document.querySelector(".drivers-section");
+    const grid = $("#drivers-grid");
+    if (!grid) return;
+    const drivers = collectDrivers();
+    if (!drivers.length) {
+      if (section) section.hidden = true;
+      return;
+    }
+    grid.innerHTML = drivers
+      .map(
+        (d) => `
+      <div class="driver-card">
+        <div class="driver-avatar">${
+          d.photo ? `<img src="${d.photo}" alt="${d.name}" loading="lazy">` : DRIVER_PLACEHOLDER_ICON
+        }</div>
+        <p class="driver-name">${d.name}</p>
+        <p class="driver-vehicles">${d.vehicleTypes.join(" · ")}</p>
+        <div class="driver-badges">
+          ${d.experience ? `<span class="driver-badge">${d.experience}</span>` : ""}
+          ${d.trips != null ? `<span class="driver-badge">${d.trips.toLocaleString("es-SV")}+ viajes</span>` : ""}
+        </div>
+        <span class="driver-verified">✓ Verificado</span>
+      </div>`
+      )
+      .join("");
+  }
+
   // Para tipos de vehículo con varias fotos reales (ej. Sedán), las va
   // rotando automáticamente para mostrar que puede llegar cualquiera de
   // esos autos — el cliente no elige el vehículo específico.
@@ -2176,6 +2228,7 @@
     wireCoverageMap();
     renderTestimonials();
     renderVehicles();
+    renderDrivers();
     renderStats();
     renderFAQ();
     wireGoogleReviewsLink();

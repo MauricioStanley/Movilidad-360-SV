@@ -919,6 +919,62 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
 .testimonial-card figcaption strong { color: var(--green-300); }
 .testimonial-card figcaption span { color: var(--paper-dim); font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.2rem; }
 
+/* ---------- Conductores ---------- */
+.drivers-section { background: var(--blue-900); }
+.drivers-grid {
+  display: grid;
+  gap: 1.2rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  margin-top: 1.5rem;
+}
+.driver-card {
+  margin: 0;
+  background: var(--blue-800);
+  border: 1px solid var(--border-softer);
+  border-radius: var(--radius-lg);
+  padding: 1.6rem 1.2rem;
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.driver-avatar {
+  width: 84px; height: 84px;
+  border-radius: 50%;
+  background: var(--blue-700);
+  color: var(--green-300);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 2px solid var(--border-soft);
+}
+.driver-avatar svg { width: 55%; height: 55%; }
+.driver-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.driver-name { font-weight: 700; color: var(--paper); font-size: 0.98rem; margin: 0.7rem 0 0; }
+.driver-vehicles {
+  font-size: 0.72rem; color: var(--paper-dim); font-family: var(--font-mono);
+  text-transform: uppercase; letter-spacing: 0.04em; margin: 0.2rem 0 0;
+}
+.driver-badges { display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: center; margin-top: 0.8rem; }
+.driver-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.32rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(124,179,66,0.14);
+  color: var(--green-300);
+  border: 1px solid var(--line-accent);
+}
+.driver-verified {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--green-400);
+  margin-top: 0.7rem;
+}
+
 /* ---------- Sobre nosotros ---------- */
 .about-section { background: var(--blue-950); }
 .about-grid {
