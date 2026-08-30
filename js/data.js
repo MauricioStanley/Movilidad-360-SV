@@ -162,40 +162,94 @@ const TESTIMONIALS = [
 /* ---------- Vehículos disponibles ----------
    Ilustrativo: el cliente no elige el vehículo específico, solo el tipo
    que probablemente lo recogerá. Se le enviará el vehículo que esté
-   disponible en el momento del viaje, y su foto se confirma por WhatsApp
-   antes de recogerlo.
-   ⚠️ REEMPLAZAR: cuando tengan fotos reales de los vehículos, agreguen
-   un campo "photo": "ruta/a/la/foto.jpg" (una sola foto) o "photos": [...]
-   (varias fotos que rotan en la tarjeta) — se usan automáticamente en vez
-   del ícono. */
+   disponible en el momento del viaje.
+
+   Cada "unit" es un vehículo real de la flota. La placa, marca/modelo y
+   color se leen de la foto (son reales). Los datos del conductor
+   (nombre, foto, calificación, viajes) son EJEMPLO/PLACEHOLDER — el
+   cliente los reemplazará con la información real de cada conductor.
+   ⚠️ REEMPLAZAR: "driverName", "driverPhoto", "rating" y "trips" de
+   cada unidad con los datos reales cuando el cliente los proporcione. */
 const VEHICLES = [
   {
     type: "Sedán",
     capacity: "Hasta 4 pasajeros",
     desc: "Ideal para viajes locales y traslados individuales o en pareja. Te enviamos el sedán disponible en el momento.",
     icon: "sedan",
-    photos: ["img/vehicles/sedan-1.jpg", "img/vehicles/sedan-2.jpg", "img/vehicles/sedan-3.jpg"],
+    units: [
+      {
+        photo: "img/vehicles/sedan-1.jpg",
+        model: "Kia Rio",
+        color: "Negro",
+        plate: "P727-374",
+        driverName: "[Reemplazar: nombre del conductor]",
+        driverPhoto: null,
+        rating: 4.9,
+        trips: 210,
+      },
+      {
+        photo: "img/vehicles/sedan-2.jpg",
+        model: "Honda Fit",
+        color: "Gris",
+        plate: "Se confirma por WhatsApp",
+        driverName: "[Reemplazar: nombre del conductor]",
+        driverPhoto: null,
+        rating: 4.8,
+        trips: 175,
+      },
+      {
+        photo: "img/vehicles/sedan-3.jpg",
+        model: "Kia Spectra",
+        color: "Plateado",
+        plate: "P90-628",
+        driverName: "[Reemplazar: nombre del conductor]",
+        driverPhoto: null,
+        rating: 5.0,
+        trips: 260,
+      },
+      {
+        photo: "img/vehicles/sedan-4.jpg",
+        model: "Chevrolet Spark",
+        color: "Plateado",
+        plate: "P293-808",
+        driverName: "[Reemplazar: nombre del conductor]",
+        driverPhoto: null,
+        rating: 4.9,
+        trips: 140,
+      },
+    ],
   },
   {
     type: "Camioneta",
     capacity: "Hasta 6 pasajeros",
     desc: "Más espacio para equipaje, grupos familiares o viajes al aeropuerto.",
     icon: "suv",
-    photo: null,
+    units: [],
   },
   {
     type: "Microbús",
     capacity: "Hasta 12 pasajeros",
     desc: "Perfecta para grupos grandes, tours y viajes interdepartamentales.",
     icon: "van",
-    photo: null,
+    units: [],
   },
   {
     type: "Pick up",
     capacity: "Mudanzas y carga",
     desc: "Para mudanzas pequeñas, muebles y carga voluminosa.",
     icon: "pickup",
-    photo: "img/vehicles/pickup-1.jpg",
+    units: [
+      {
+        photo: "img/vehicles/pickup-1.jpg",
+        model: "Foton T5",
+        color: "Blanco",
+        plate: "P65-31C",
+        driverName: "[Reemplazar: nombre del conductor]",
+        driverPhoto: null,
+        rating: 4.9,
+        trips: 95,
+      },
+    ],
   },
 ];
 
