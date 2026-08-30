@@ -11,6 +11,16 @@
 (function () {
   "use strict";
 
+  /* ---------------- Instalar como app (PWA) ----------------
+     El navegador dispara "beforeinstallprompt" (Chrome/Android/Edge) antes
+     de que el DOM termine de cargar, así que hay que capturarlo desde ya,
+     fuera de DOMContentLoaded, para no perderlo. */
+  let deferredInstallPrompt = null;
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+  });
+
   /* ---------------- Utilidades ---------------- */
   const $ = (sel, ctx) => (ctx || document).querySelector(sel);
   const $$ = (sel, ctx) => Array.from((ctx || document).querySelectorAll(sel));
@@ -1760,8 +1770,71 @@
     document.addEventListener("click", (e) => {
       const waBtn = e.target.closest('a[href*="wa.me"]');
       if (waBtn) trackEvent("whatsapp_click", { link_id: waBtn.id || "unknown" });
-      const quickBtn = e.target.closest("#float-quick");
-      if (quickBtn) trackEvent("quick_ride_click", { link_id: "float-quick" });
+    });
+  }
+
+  /* =====================================================================
+     Botón "Instalar app": dispara el prompt nativo de instalación
+     (Chrome/Android/Edge) o, si el navegador no lo soporta (Safari/iOS),
+     muestra instrucciones manuales para agregarlo a la pantalla de inicio.
+     ===================================================================== */
+  function isRunningInstalled() {
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true
+    );
+  }
+
+  function wireInstallFloat() {
+    const btn = $("#float-install");
+    const tip = $("#installTip");
+    if (!btn) return;
+
+    if (isRunningInstalled()) {
+      btn.hidden = true;
+      return;
+    }
+
+    window.addEventListener("appinstalled", () => {
+      deferredInstallPrompt = null;
+      btn.hidden = true;
+      if (tip) tip.hidden = true;
+      trackEvent("pwa_installed", {});
+    });
+
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+    btn.addEventListener("click", async (e) => {
+      e.preventDefault();
+
+      if (deferredInstallPrompt) {
+        if (tip) tip.hidden = true;
+        deferredInstallPrompt.prompt();
+        try {
+          const choice = await deferredInstallPrompt.userChoice;
+          trackEvent("pwa_install_prompt", { outcome: choice.outcome, link_id: "float-install" });
+        } catch (err) {
+          /* el usuario cerró el prompt; no hay nada más que hacer */
+        }
+        deferredInstallPrompt = null;
+        return;
+      }
+
+      // El navegador no soporta el prompt nativo (Safari/iOS, o Chrome que
+      // aún no decidió mostrarlo): mostramos instrucciones manuales.
+      if (!tip) return;
+      tip.textContent = isIOS
+        ? "Para instalarla: toca el ícono de Compartir ⬆️ en Safari y luego \"Agregar a pantalla de inicio\"."
+        : "Busca la opción \"Instalar app\" o \"Agregar a pantalla de inicio\" en el menú (⋮) de tu navegador.";
+      tip.hidden = !tip.hidden;
+      trackEvent("pwa_install_instructions_shown", { link_id: "float-install" });
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!tip || tip.hidden) return;
+      if (!e.target.closest("#float-install") && !e.target.closest("#installTip")) {
+        tip.hidden = true;
+      }
     });
   }
 
@@ -2107,6 +2180,7 @@
     renderFAQ();
     wireGoogleReviewsLink();
     wireAnalyticsEvents();
+    wireInstallFloat();
     registerServiceWorker();
 
     TRAVEL_PREFIXES.forEach(injectPaxPetsControls);
