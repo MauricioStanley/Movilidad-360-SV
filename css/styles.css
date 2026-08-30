@@ -737,8 +737,8 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
 
 /* ---------- Cobertura (mapa) ---------- */
 .coverage-section { background: var(--blue-900); }
+.coverage-map-wrap { position: relative; margin-top: 1.5rem; }
 .coverage-map {
-  margin-top: 1.5rem;
   width: 100%;
   height: min(420px, 60vh);
   border-radius: var(--radius-lg);
@@ -750,6 +750,33 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
   place-items: center;
   color: var(--paper-dim);
   font-size: 0.85rem;
+}
+/* Aviso "toca para interactuar": el mapa arranca sin arrastre/zoom para
+   que el scroll de la página nunca se quede atrapado dentro del mapa;
+   un toque lo activa y este aviso desaparece. */
+.coverage-map-hint {
+  position: absolute;
+  inset: auto auto 1rem 50%;
+  transform: translateX(-50%);
+  appearance: none;
+  border: none;
+  padding: 0.6rem 1.1rem;
+  border-radius: 999px;
+  background: rgba(10, 22, 40, 0.78);
+  color: var(--paper);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index: 2;
+}
+.coverage-map-hint:hover { background: rgba(10, 22, 40, 0.92); }
+.coverage-map-hint.is-hidden {
+  opacity: 0;
+  transform: translateX(-50%) translateY(6px);
+  pointer-events: none;
 }
 
 /* ---------- Vehículos ----------

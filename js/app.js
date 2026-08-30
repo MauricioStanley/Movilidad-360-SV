@@ -177,6 +177,21 @@
     return point ? googleMapsLink(point.lat, point.lng) : null;
   }
 
+  // Enlace de Waze que abre navegación turno-a-turno directo hacia el
+  // punto donde está el cliente. Waze siempre traza la ruta desde la
+  // ubicación real del teléfono que abre el enlace en ese momento, así
+  // que el conductor solo lo toca y le sale la ruta desde donde esté
+  // parado hacia el cliente — no hace falta indicarle un punto de partida.
+  function wazeLink(lat, lng) {
+    return `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
+  }
+  function originWazeLink() {
+    return userLocation ? wazeLink(userLocation.lat, userLocation.lng) : null;
+  }
+  function pointWazeLink(point) {
+    return point ? wazeLink(point.lat, point.lng) : null;
+  }
+
   // Convierte coordenadas en una referencia legible (colonia/calle) usando
   // Nominatim (OpenStreetMap), gratuito y sin API key. Es un "mejor esfuerzo":
   // si falla o tarda, simplemente no se agrega el nombre y se sigue usando
@@ -346,12 +361,14 @@
   function buildQuoteMessage(prefix, { originName, destName, price, minutes, distanceKm, extraLine, real }, paymentMethod) {
     const { passengers, pets } = paxPetsFor(prefix);
     const mapsLink = originMapsLink();
+    const wazeLinkUrl = originWazeLink();
     return (
       `Hola *MOVILIDAD 360 SV* 👋\n\n` +
       `Quiero cotizar un *${SERVICE_NAMES[prefix]}*:\n` +
       `📍 Desde: ${originName}` +
       (mapsLink ? ` — ${mapsLink}` : "") +
       `\n` +
+      (wazeLinkUrl ? `🧭 Ruta en Waze hacia mí: ${wazeLinkUrl}\n` : "") +
       `🎯 Hasta: ${destName}\n` +
       `📏 Distancia ${real ? "real por carretera" : "aproximada"}: ${distanceKm.toFixed(1)} km\n` +
       `💵 Precio estimado: ${formatMoney(price)}\n` +
@@ -664,6 +681,7 @@
             `📍 Recolección: ${from}` +
             (pointMapsLink(parcelState.fromPoint) ? ` — ${pointMapsLink(parcelState.fromPoint)}` : "") +
             `\n` +
+            (pointWazeLink(parcelState.fromPoint) ? `🧭 Ruta en Waze hacia la recolección: ${pointWazeLink(parcelState.fromPoint)}\n` : "") +
             `🎯 Entrega: ${to}` +
             (pointMapsLink(parcelState.toPoint) ? ` — ${pointMapsLink(parcelState.toPoint)}` : "") +
             (distanceKm !== null ? `\n📏 Distancia ${real ? "real por carretera" : "aproximada"}: ${distanceKm.toFixed(1)} km` : "") +
@@ -777,6 +795,7 @@
             `📍 Recolección: ${from}` +
             (pointMapsLink(mudanzaState.fromPoint) ? ` — ${pointMapsLink(mudanzaState.fromPoint)}` : "") +
             `\n` +
+            (pointWazeLink(mudanzaState.fromPoint) ? `🧭 Ruta en Waze hacia la recolección: ${pointWazeLink(mudanzaState.fromPoint)}\n` : "") +
             `🎯 Entrega: ${to}` +
             (pointMapsLink(mudanzaState.toPoint) ? ` — ${pointMapsLink(mudanzaState.toPoint)}` : "") +
             (notes ? `\n📝 Detalles: ${notes}` : "") +
@@ -1373,7 +1392,17 @@
     coverageMapRequested = true;
     loadLeaflet()
       .then(() => {
-        const cmap = L.map("coverage-map", { scrollWheelZoom: false }).setView([13.85, -89.1], 8);
+        // El mapa arranca "bloqueado" (sin arrastre/zoom táctil) para que
+        // al hacer scroll por la página y pasar sobre el mapa, el dedo
+        // siga moviendo la página en vez de mover el mapa — un problema
+        // clásico de mapas embebidos en móvil. Un toque lo "activa".
+        const cmap = L.map("coverage-map", {
+          scrollWheelZoom: false,
+          dragging: false,
+          touchZoom: false,
+          doubleClickZoom: false,
+          boxZoom: false,
+        }).setView([13.85, -89.1], 8);
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
           attribution: "&copy; colaboradores de OpenStreetMap",
           maxZoom: 18,
@@ -1384,6 +1413,18 @@
             .bindPopup(`<b>${d.name}</b><br>${d.tag}`);
         });
         setTimeout(() => cmap.invalidateSize(), 150);
+
+        const hint = $("#coverageMapHint");
+        if (hint) {
+          hint.addEventListener("click", () => {
+            cmap.dragging.enable();
+            cmap.touchZoom.enable();
+            cmap.doubleClickZoom.enable();
+            cmap.boxZoom.enable();
+            cmap.scrollWheelZoom.enable();
+            hint.classList.add("is-hidden");
+          });
+        }
       })
       .catch(() => {
         const el = $("#coverage-map");
