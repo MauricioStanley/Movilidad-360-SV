@@ -1530,7 +1530,7 @@
   const DRIVER_PLACEHOLDER_ICON =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c1.4-3.6 4.4-5.5 7.5-5.5s6.1 1.9 7.5 5.5"/></svg>';
 
-  function renderVehicleModalUnit() {
+  function renderVehicleModalUnit(enterDir) {
     const { vehicle, idx } = vehicleModalCtx;
     const units = vehicle.units || [];
     $("#vehicleModalTitle").textContent = vehicle.type;
@@ -1547,16 +1547,28 @@
     }
 
     const u = units[idx];
-    media.innerHTML = `<img src="${u.photo}" alt="${vehicle.type} — ${u.model}" class="vehicle-modal-photo-fade">`;
+    const enterClass = enterDir === "bwd" ? " enter-bwd" : "";
+    const nav =
+      units.length > 1
+        ? `
+      <button type="button" class="vehicle-modal-nav prev" aria-label="Vehículo anterior">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+      <button type="button" class="vehicle-modal-nav next" aria-label="Siguiente vehículo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+      <span class="vehicle-modal-counter">${idx + 1} / ${units.length}</span>`
+        : "";
+    media.innerHTML = `<img src="${u.photo}" alt="${vehicle.type} — ${u.model}" class="vehicle-modal-photo-fade${enterClass}">${nav}`;
     info.innerHTML = `
-      <div class="vehicle-modal-row vehicle-modal-fade">
+      <div class="vehicle-modal-row vehicle-modal-fade${enterClass}">
         <div>
           <h5>${u.model}</h5>
           <p class="vehicle-modal-color">${u.color} · ${vehicle.capacity}</p>
         </div>
         <span class="vehicle-modal-plate">${u.plate}</span>
       </div>
-      <div class="vehicle-modal-driver vehicle-modal-fade">
+      <div class="vehicle-modal-driver vehicle-modal-fade${enterClass}">
         <div class="vehicle-modal-avatar">${u.driverPhoto ? `<img src="${u.driverPhoto}" alt="${u.driverName}">` : DRIVER_PLACEHOLDER_ICON}</div>
         <div class="vehicle-modal-driver-text">
           <p class="vehicle-modal-driver-name">${u.driverName}</p>
@@ -1576,11 +1588,41 @@
             .join("")
         : "";
     $$(".vehicle-modal-tab", tabs).forEach((btn) => {
-      btn.addEventListener("click", () => {
-        vehicleModalCtx.idx = Number(btn.dataset.idx);
-        renderVehicleModalUnit();
-      });
+      btn.addEventListener("click", () => goToVehicleUnit(Number(btn.dataset.idx)));
     });
+
+    if (units.length > 1) {
+      $(".vehicle-modal-nav.prev", media).addEventListener("click", () => goToVehicleUnit((idx - 1 + units.length) % units.length, false));
+      $(".vehicle-modal-nav.next", media).addEventListener("click", () => goToVehicleUnit((idx + 1) % units.length, true));
+    }
+  }
+
+  // Cambia de unidad con una transición direccional (como un carrusel):
+  // la tarjeta actual sale suavemente hacia el lado por el que "entró" y
+  // la nueva llega desde el lado contrario. La salida es más corta que
+  // la entrada — la entrada es el momento con autoría, la salida solo
+  // despeja el paso.
+  // "forwardHint" lo pasan las flechas (true = siguiente, false =
+  // anterior) porque en el ciclo (del último al primero) comparar los
+  // índices directamente da la dirección al revés; al elegir una
+  // pestaña directamente, no hay pista y se infiere por el índice.
+  function goToVehicleUnit(newIdx, forwardHint) {
+    if (!vehicleModalCtx || vehicleModalCtx.animating) return;
+    const { idx } = vehicleModalCtx;
+    if (newIdx === idx) return;
+    const forward = typeof forwardHint === "boolean" ? forwardHint : newIdx > idx;
+    vehicleModalCtx.animating = true;
+
+    const media = $("#vehicleModalMedia");
+    const info = $("#vehicleModalInfo");
+    const leavingEls = [...$$(".vehicle-modal-photo-fade", media), ...$$(".vehicle-modal-fade", info)];
+    leavingEls.forEach((el) => el.classList.add("leaving", forward ? "leave-fwd" : "leave-bwd"));
+
+    setTimeout(() => {
+      vehicleModalCtx.idx = newIdx;
+      renderVehicleModalUnit(forward ? "fwd" : "bwd");
+      vehicleModalCtx.animating = false;
+    }, 170);
   }
 
   function openVehicleModal(vehicle) {
@@ -1724,30 +1766,72 @@
     });
   }
 
-  function wireJoinUsLink() {
-    const el = document.getElementById("join-us-wa");
-    if (!el) return;
-    // Plantilla para que la persona la complete antes de enviarla: así el
-    // equipo recibe toda la información que pide el formulario, aunque no
-    // haya un formulario real (el sitio no tiene backend).
-    const msg =
-      `Hola *MOVILIDAD 360 SV* 👋\n\n` +
-      `Quiero postularme para trabajar con ustedes. Aquí mi información:\n\n` +
-      `👤 Nombre completo: \n` +
-      `📱 Teléfono/WhatsApp: \n` +
-      `🎂 Edad: \n` +
-      `📍 Municipio y departamento: \n` +
-      `💼 Área de interés: \n` +
-      `🕐 Horarios disponibles: \n` +
-      `📋 Experiencia relacionada: \n\n` +
-      `🚗 Si aplico como conductor:\n` +
-      `Licencia: \n` +
-      `¿Vehículo propio?: \n` +
-      `Marca/modelo/año: \n` +
-      `Tipo de vehículo: \n` +
-      `Experiencia transportando pasajeros/encomiendas: `;
-    el.href = waLink(msg);
-    el.addEventListener("click", () => trackEvent("whatsapp_click", { link_id: "join-us" }));
+  // Formulario "Trabaja con nosotros": se llena en la página (no hay
+  // backend) y al enviarlo arma el mensaje de WhatsApp con lo que la
+  // persona escribió, en vez de mandarla a completar una plantilla vacía
+  // dentro del chat.
+  function wireJoinUsForm() {
+    const form = document.getElementById("join-form");
+    if (!form) return;
+
+    const driverToggle = document.getElementById("join-driver-toggle");
+    const driverFields = document.getElementById("join-driver-fields");
+    driverToggle.addEventListener("click", () => {
+      const isOn = driverToggle.classList.toggle("on");
+      driverToggle.setAttribute("aria-pressed", String(isOn));
+      driverFields.classList.toggle("open", isOn);
+    });
+
+    const val = (id) => (document.getElementById(id).value || "").trim();
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const errorEl = document.getElementById("join-form-error");
+      const name = val("join-name");
+      const phone = val("join-phone");
+      if (!name || !phone) {
+        errorEl.hidden = false;
+        (name ? document.getElementById("join-phone") : document.getElementById("join-name")).focus();
+        return;
+      }
+      errorEl.hidden = true;
+
+      const lines = [
+        `Hola *MOVILIDAD 360 SV* 👋`,
+        ``,
+        `Quiero postularme para trabajar con ustedes. Aquí mi información:`,
+        ``,
+        `👤 Nombre completo: ${name}`,
+        `📱 Teléfono/WhatsApp: ${phone}`,
+      ];
+      const age = val("join-age");
+      if (age) lines.push(`🎂 Edad: ${age}`);
+      const location = val("join-location");
+      if (location) lines.push(`📍 Municipio y departamento: ${location}`);
+      const area = val("join-area");
+      if (area) lines.push(`💼 Área de interés: ${area}`);
+      const schedule = val("join-schedule");
+      if (schedule) lines.push(`🕐 Horarios disponibles: ${schedule}`);
+      const experience = val("join-experience");
+      if (experience) lines.push(`📋 Experiencia relacionada: ${experience}`);
+
+      if (driverToggle.classList.contains("on")) {
+        lines.push(``, `🚗 Aplico como conductor:`);
+        const license = val("join-license");
+        if (license) lines.push(`Licencia: ${license}`);
+        const ownVehicle = val("join-own-vehicle");
+        if (ownVehicle) lines.push(`¿Vehículo propio?: ${ownVehicle}`);
+        const vehicleInfo = val("join-vehicle-info");
+        if (vehicleInfo) lines.push(`Marca/modelo/año: ${vehicleInfo}`);
+        const vehicleType = val("join-vehicle-type");
+        if (vehicleType) lines.push(`Tipo de vehículo: ${vehicleType}`);
+        const driverExperience = val("join-driver-experience");
+        if (driverExperience) lines.push(`Experiencia transportando pasajeros/encomiendas: ${driverExperience}`);
+      }
+
+      trackEvent("whatsapp_click", { link_id: "join-us" });
+      window.open(waLink(lines.join("\n")), "_blank", "noopener");
+    });
   }
 
   /* =====================================================================
@@ -2020,7 +2104,7 @@
     wireFixedRoutesForm();
 
     // Trabaja con nosotros
-    wireJoinUsLink();
+    wireJoinUsForm();
 
     // Restauramos la última cotización guardada (si existe) antes de pedir
     // ubicación, para que el cliente no pierda lo que ya tenía seleccionado.
