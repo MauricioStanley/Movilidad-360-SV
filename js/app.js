@@ -1760,6 +1760,8 @@
     document.addEventListener("click", (e) => {
       const waBtn = e.target.closest('a[href*="wa.me"]');
       if (waBtn) trackEvent("whatsapp_click", { link_id: waBtn.id || "unknown" });
+      const quickBtn = e.target.closest("#float-quick");
+      if (quickBtn) trackEvent("quick_ride_click", { link_id: "float-quick" });
     });
   }
 
