@@ -670,6 +670,23 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
   .quick-float { width: 46px; height: 46px; padding: 0; justify-content: center; }
 }
 
+.install-tip {
+  position: absolute;
+  right: 0; bottom: 100%;
+  margin-bottom: 0.7rem;
+  width: min(240px, 72vw);
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--blue-800);
+  border: 1px solid var(--border-soft);
+  color: var(--paper);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  box-shadow: var(--shadow-lg);
+}
+.install-tip b { color: var(--green-300); }
+.install-tip[hidden] { display: none; }
+
 /* ---------- Utility ---------- */
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .section-pad { padding-inline: var(--gutter); padding-block: clamp(2.5rem, 5vw, 4rem); }
