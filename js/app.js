@@ -1572,7 +1572,9 @@
         <div class="vehicle-modal-avatar">${u.driverPhoto ? `<img src="${u.driverPhoto}" alt="${u.driverName}">` : DRIVER_PLACEHOLDER_ICON}</div>
         <div class="vehicle-modal-driver-text">
           <p class="vehicle-modal-driver-name">${u.driverName}</p>
-          <p class="vehicle-modal-driver-meta"><span class="vehicle-modal-stars">${renderStars(u.rating)}</span> ${u.rating.toFixed(1)} · ${u.trips} viajes completados</p>
+          <p class="vehicle-modal-driver-meta">${
+            u.rating != null ? `<span class="vehicle-modal-stars">${renderStars(u.rating)}</span> ${u.rating.toFixed(1)} · ` : ""
+          }${u.trips} viajes completados${u.experience ? ` · ${u.experience}` : ""}</p>
         </div>
         <span class="vehicle-modal-verified">✓ Verificado</span>
       </div>

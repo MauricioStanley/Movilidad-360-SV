@@ -165,11 +165,15 @@ const TESTIMONIALS = [
    disponible en el momento del viaje.
 
    Cada "unit" es un vehículo real de la flota. La placa, marca/modelo y
-   color se leen de la foto (son reales). Los datos del conductor
-   (nombre, foto, calificación, viajes) son EJEMPLO/PLACEHOLDER — el
-   cliente los reemplazará con la información real de cada conductor.
-   ⚠️ REEMPLAZAR: "driverName", "driverPhoto", "rating" y "trips" de
-   cada unidad con los datos reales cuando el cliente los proporcione. */
+   color se leen de la foto (son reales).
+   El Honda Fit y el Kia Cerato ya tienen datos reales del conductor
+   (nombre, foto, viajes, experiencia). El Kia Rio y el Chevrolet Spark
+   todavía usan datos de EJEMPLO/PLACEHOLDER (incluye "rating" inventado
+   solo en esos dos) hasta que el cliente los reemplace.
+   ⚠️ REEMPLAZAR: "driverName", "driverPhoto" y "trips" de las unidades
+   que aún no tienen datos reales. "rating" es opcional — solo se
+   muestra si la unidad lo trae; quítalo cuando no haya calificación
+   real todavía en vez de inventar un número. */
 const VEHICLES = [
   {
     type: "Sedán",
@@ -191,21 +195,21 @@ const VEHICLES = [
         photo: "img/vehicles/sedan-2.jpg",
         model: "Honda Fit",
         color: "Gris",
-        plate: "Se confirma por WhatsApp",
-        driverName: "[Reemplazar: nombre del conductor]",
-        driverPhoto: null,
-        rating: 4.8,
-        trips: 175,
+        plate: "P656-455",
+        driverName: "Francis Borja",
+        driverPhoto: "img/drivers/francis-borja.jpg",
+        trips: 550,
+        experience: "3 años de experiencia",
       },
       {
         photo: "img/vehicles/sedan-3.jpg",
-        model: "Kia Spectra",
+        model: "Kia Cerato 2006",
         color: "Plateado",
         plate: "P90-628",
-        driverName: "[Reemplazar: nombre del conductor]",
-        driverPhoto: null,
-        rating: 5.0,
-        trips: 260,
+        driverName: "David Josué Delgado Cañas",
+        driverPhoto: "img/drivers/david-josue.jpg",
+        trips: 600,
+        experience: "2 años de experiencia",
       },
       {
         photo: "img/vehicles/sedan-4.jpg",
