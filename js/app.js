@@ -1438,7 +1438,7 @@
     const grid = $("#vehicles-grid");
     if (!grid) return;
     grid.innerHTML = VEHICLES.map((v, i) => {
-      const photos = v.photos && v.photos.length ? v.photos : v.photo ? [v.photo] : [];
+      const photos = (v.units || []).map((u) => u.photo).filter(Boolean);
       return `
       <button type="button" class="vehicle-card" data-idx="${i}">
         <div class="vehicle-media">
@@ -1452,6 +1452,7 @@
               ? `<div class="vehicle-media-dots">${photos.map((_, di) => `<span class="vehicle-media-dot${di === 0 ? " on" : ""}"></span>`).join("")}</div>`
               : ""
           }
+          <span class="vehicle-card-cta">Ver detalles</span>
         </div>
         <h4>${v.type}</h4>
         <p class="vehicle-capacity">${v.capacity}</p>
@@ -1507,7 +1508,111 @@
       card.addEventListener("click", () => {
         $$(".vehicle-card", grid).forEach((c) => c.classList.remove("selected"));
         card.classList.add("selected");
+        const v = VEHICLES[Number(card.dataset.idx)];
+        openVehicleModal(v);
       });
+    });
+  }
+
+  /* =====================================================================
+     Detalle de vehículo — al escoger una tarjeta de la flota, se abre un
+     modal con la(s) unidad(es) reales de ese tipo: foto, modelo, placa y
+     los datos del conductor. Los datos del conductor son un ejemplo
+     (⚠️ placeholder en data.js) hasta que el cliente entregue los reales.
+     ===================================================================== */
+  let vehicleModalCtx = null; // { vehicle, idx }
+
+  function renderStars(rating) {
+    const full = Math.round(rating);
+    return Array.from({ length: 5 }, (_, i) => (i < full ? "★" : "☆")).join("");
+  }
+
+  const DRIVER_PLACEHOLDER_ICON =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c1.4-3.6 4.4-5.5 7.5-5.5s6.1 1.9 7.5 5.5"/></svg>';
+
+  function renderVehicleModalUnit() {
+    const { vehicle, idx } = vehicleModalCtx;
+    const units = vehicle.units || [];
+    $("#vehicleModalTitle").textContent = vehicle.type;
+
+    const media = $("#vehicleModalMedia");
+    const info = $("#vehicleModalInfo");
+    const tabs = $("#vehicleModalTabs");
+
+    if (!units.length) {
+      media.innerHTML = `<div class="vehicle-modal-empty"><svg class="vehicle-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${VEHICLE_ICONS[vehicle.icon] || ""}</svg></div>`;
+      info.innerHTML = `<p class="vehicle-modal-pending">Todavía no tenemos fotos de este tipo de vehículo en el sistema. No te preocupes: te compartimos el vehículo y el conductor asignado por WhatsApp antes de tu viaje.</p>`;
+      tabs.innerHTML = "";
+      return;
+    }
+
+    const u = units[idx];
+    media.innerHTML = `<img src="${u.photo}" alt="${vehicle.type} — ${u.model}" class="vehicle-modal-photo-fade">`;
+    info.innerHTML = `
+      <div class="vehicle-modal-row vehicle-modal-fade">
+        <div>
+          <h5>${u.model}</h5>
+          <p class="vehicle-modal-color">${u.color} · ${vehicle.capacity}</p>
+        </div>
+        <span class="vehicle-modal-plate">${u.plate}</span>
+      </div>
+      <div class="vehicle-modal-driver vehicle-modal-fade">
+        <div class="vehicle-modal-avatar">${u.driverPhoto ? `<img src="${u.driverPhoto}" alt="${u.driverName}">` : DRIVER_PLACEHOLDER_ICON}</div>
+        <div class="vehicle-modal-driver-text">
+          <p class="vehicle-modal-driver-name">${u.driverName}</p>
+          <p class="vehicle-modal-driver-meta"><span class="vehicle-modal-stars">${renderStars(u.rating)}</span> ${u.rating.toFixed(1)} · ${u.trips} viajes completados</p>
+        </div>
+        <span class="vehicle-modal-verified">✓ Verificado</span>
+      </div>
+    `;
+
+    tabs.innerHTML =
+      units.length > 1
+        ? units
+            .map(
+              (uu, i) =>
+                `<button type="button" class="vehicle-modal-tab${i === idx ? " active" : ""}" data-idx="${i}" role="tab" aria-selected="${i === idx}">${uu.model.split(" ")[0]}</button>`
+            )
+            .join("")
+        : "";
+    $$(".vehicle-modal-tab", tabs).forEach((btn) => {
+      btn.addEventListener("click", () => {
+        vehicleModalCtx.idx = Number(btn.dataset.idx);
+        renderVehicleModalUnit();
+      });
+    });
+  }
+
+  function openVehicleModal(vehicle) {
+    vehicleModalCtx = { vehicle, idx: 0 };
+    renderVehicleModalUnit();
+    $("#vehicleModal").classList.add("open");
+    trackEvent("vehicle_view", { vehicle_type: vehicle.type });
+  }
+
+  function closeVehicleModal() {
+    $("#vehicleModal").classList.remove("open");
+    vehicleModalCtx = null;
+  }
+
+  function wireVehicleModal() {
+    $("#vehicleModalClose").addEventListener("click", closeVehicleModal);
+    $("#vehicleModalClose2").addEventListener("click", closeVehicleModal);
+    $("#vehicleModal").addEventListener("click", (e) => {
+      if (e.target.id === "vehicleModal") closeVehicleModal();
+    });
+    $("#vehicleModalWa").addEventListener("click", () => {
+      if (!vehicleModalCtx) return;
+      const { vehicle, idx } = vehicleModalCtx;
+      const unit = (vehicle.units || [])[idx];
+      const msg =
+        `Hola *MOVILIDAD 360 SV* 👋\n\n` +
+        `Me interesa reservar un viaje con un vehículo tipo *${vehicle.type}*` +
+        (unit ? ` (ej. ${unit.model}).` : `.`) +
+        `\n¿Podrían darme más información?`;
+      trackEvent("whatsapp_click", { link_id: "vehicle-modal" });
+      window.open(waLink(msg), "_blank", "noopener");
+      closeVehicleModal();
     });
   }
 
@@ -1620,12 +1725,29 @@
   }
 
   function wireJoinUsLink() {
-    const el = document.getElementById("footer-join-us");
+    const el = document.getElementById("join-us-wa");
     if (!el) return;
+    // Plantilla para que la persona la complete antes de enviarla: así el
+    // equipo recibe toda la información que pide el formulario, aunque no
+    // haya un formulario real (el sitio no tiene backend).
     const msg =
-      `Hola *MOVILIDAD 360 SV* 👋\n\nMe interesa trabajar con ustedes. ` +
-      `¿Podrían darme más información sobre cómo unirme al equipo?`;
+      `Hola *MOVILIDAD 360 SV* 👋\n\n` +
+      `Quiero postularme para trabajar con ustedes. Aquí mi información:\n\n` +
+      `👤 Nombre completo: \n` +
+      `📱 Teléfono/WhatsApp: \n` +
+      `🎂 Edad: \n` +
+      `📍 Municipio y departamento: \n` +
+      `💼 Área de interés: \n` +
+      `🕐 Horarios disponibles: \n` +
+      `📋 Experiencia relacionada: \n\n` +
+      `🚗 Si aplico como conductor:\n` +
+      `Licencia: \n` +
+      `¿Vehículo propio?: \n` +
+      `Marca/modelo/año: \n` +
+      `Tipo de vehículo: \n` +
+      `Experiencia transportando pasajeros/encomiendas: `;
     el.href = waLink(msg);
+    el.addEventListener("click", () => trackEvent("whatsapp_click", { link_id: "join-us" }));
   }
 
   /* =====================================================================
@@ -1847,6 +1969,7 @@
     wireTogglePanels();
     wireMapModal();
     wireConfirmModal();
+    wireVehicleModal();
     wireJourneyScrollFx();
     wireCoverageMap();
     renderTestimonials();
