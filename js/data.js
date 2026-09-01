@@ -164,16 +164,11 @@ const TESTIMONIALS = [
    que probablemente lo recogerá. Se le enviará el vehículo que esté
    disponible en el momento del viaje.
 
-   Cada "unit" es un vehículo real de la flota. La placa, marca/modelo y
-   color se leen de la foto (son reales).
-   El Honda Fit y el Kia Cerato ya tienen datos reales del conductor
-   (nombre, foto, viajes, experiencia). El Kia Rio y el Chevrolet Spark
-   todavía usan datos de EJEMPLO/PLACEHOLDER (incluye "rating" inventado
-   solo en esos dos) hasta que el cliente los reemplace.
-   ⚠️ REEMPLAZAR: "driverName", "driverPhoto" y "trips" de las unidades
-   que aún no tienen datos reales. "rating" es opcional — solo se
-   muestra si la unidad lo trae; quítalo cuando no haya calificación
-   real todavía en vez de inventar un número. */
+   Cada "unit" es un vehículo real de la flota. La placa, marca/modelo,
+   color y los datos del conductor (nombre, foto, viajes, experiencia)
+   son reales para las cuatro unidades del Sedán y para el Pick up.
+   "rating" es opcional — solo se muestra si la unidad lo trae; no
+   inventar un número si no hay calificación real todavía. */
 const VEHICLES = [
   {
     type: "Sedán",
@@ -187,7 +182,7 @@ const VEHICLES = [
         color: "Negro",
         plate: "P727-374",
         driverName: "Antonio Hernández",
-        driverPhoto: null, // la foto que teníamos aquí era en realidad de Edwin Huezo — pendiente la real de Antonio
+        driverPhoto: "img/drivers/antonio-hernandez.jpg",
         trips: 4200,
         experience: "6 años de experiencia",
       },
