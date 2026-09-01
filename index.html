@@ -20,14 +20,18 @@
 <meta name="twitter:image" content="https://movilidad360sv.com/img/brand/hero-bg.jpg">
 <link rel="canonical" href="https://movilidad360sv.com/">
 <meta property="og:url" content="https://movilidad360sv.com/">
-<!-- Google Analytics (GA4) -->
+<!-- Seguridad: como GitHub Pages no deja mandar cabeceras HTTP propias,
+     esto es lo más cerca que se puede llegar a una Content-Security-Policy
+     y una Referrer-Policy sin backend. Limita de qué dominios se puede
+     cargar/ejecutar contenido — así, aunque alguien lograra inyectar HTML
+     en algún campo, el navegador no ejecutaría scripts ni cargaría nada
+     fuera de esta lista. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.googletagmanager.com https://unpkg.com; style-src 'self' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' https://router.project-osrm.org https://nominatim.openstreetmap.org https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+<!-- Google Analytics (GA4). El script de arranque vive en js/ga.js (no
+     inline) para que la CSP de arriba no necesite 'unsafe-inline'. -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-F59WF19VVM"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-F59WF19VVM');
-</script>
+<script src="js/ga.js?v=15"></script>
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -36,13 +40,15 @@
 <meta name="apple-mobile-web-app-title" content="Movilidad 360">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="css/styles.css?v=14">
+<link rel="stylesheet" href="css/styles.css?v=15">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "LocalBusiness",
   "name": "Movilidad 360 SV",
   "url": "https://movilidad360sv.com/",
+  "logo": "https://movilidad360sv.com/img/brand/logo-mark.png",
+  "image": "https://movilidad360sv.com/img/brand/hero-bg.jpg",
   "description": "Servicio de transporte en El Salvador: viajes locales, traslados al aeropuerto, envío de encomiendas, viajes interdepartamentales y turismo.",
   "areaServed": {
     "@type": "Country",
@@ -218,9 +224,9 @@
                 <div class="form-group">
                   <label class="field-label" id="parcel-size-label">Tamaño del paquete</label>
                   <div class="pill-toggle" id="parcel-size" role="group" aria-labelledby="parcel-size-label">
-                    <button type="button" class="pill-option" data-size="small" aria-pressed="false">Pequeño <span class="mono" style="opacity:.7;font-weight:400;">(&lt;2kg)</span></button>
-                    <button type="button" class="pill-option" data-size="medium" aria-pressed="false">Mediano <span class="mono" style="opacity:.7;font-weight:400;">(2–8kg)</span></button>
-                    <button type="button" class="pill-option" data-size="large" aria-pressed="false">Grande <span class="mono" style="opacity:.7;font-weight:400;">(8–20kg)</span></button>
+                    <button type="button" class="pill-option" data-size="small" aria-pressed="false">Pequeño <span class="mono mono-dim">(&lt;2kg)</span></button>
+                    <button type="button" class="pill-option" data-size="medium" aria-pressed="false">Mediano <span class="mono mono-dim">(2–8kg)</span></button>
+                    <button type="button" class="pill-option" data-size="large" aria-pressed="false">Grande <span class="mono mono-dim">(8–20kg)</span></button>
                   </div>
                 </div>
 
@@ -228,13 +234,13 @@
                   <div class="form-group">
                     <label class="field-label" for="parcel-from">Punto de recolección</label>
                     <div class="search-field"><input type="text" id="parcel-from" placeholder="Dirección o referencia de recolección"></div>
-                    <button type="button" class="btn btn-outline-ink btn-sm" data-open-map="parcel-from" style="margin-top:0.5rem;">Marcar en el mapa</button>
+                    <button type="button" class="btn btn-outline-ink btn-sm mt-sm" data-open-map="parcel-from">Marcar en el mapa</button>
                     <p class="field-hint" id="parcel-from-map-hint"></p>
                   </div>
                   <div class="form-group">
                     <label class="field-label" for="parcel-to">Punto de entrega</label>
                     <div class="search-field"><input type="text" id="parcel-to" placeholder="Dirección o referencia de entrega"></div>
-                    <button type="button" class="btn btn-outline-ink btn-sm" data-open-map="parcel-to" style="margin-top:0.5rem;">Marcar en el mapa</button>
+                    <button type="button" class="btn btn-outline-ink btn-sm mt-sm" data-open-map="parcel-to">Marcar en el mapa</button>
                     <p class="field-hint" id="parcel-to-map-hint"></p>
                   </div>
                 </div>
@@ -333,7 +339,7 @@
               <p class="field-hint">Varias paradas en un solo recorrido — ideal para un día completo.</p>
               <div class="routes-grid" id="routes-turismo"></div>
 
-              <label class="field-label" for="input-turismo" style="margin-top:1.6rem;display:block;">O busca un destino individual</label>
+              <label class="field-label mt-lg-block" for="input-turismo">O busca un destino individual</label>
               <div class="search-field">
                 <input type="text" id="input-turismo" placeholder="Ej. playa, volcán, Suchitoto…" autocomplete="off">
               </div>
@@ -390,13 +396,13 @@
                   <div class="form-group">
                     <label class="field-label" for="mudanza-from">Dirección de recolección</label>
                     <div class="search-field"><input type="text" id="mudanza-from" placeholder="Dirección o referencia de origen"></div>
-                    <button type="button" class="btn btn-outline-ink btn-sm" data-open-map="mudanza-from" style="margin-top:0.5rem;">Marcar en el mapa</button>
+                    <button type="button" class="btn btn-outline-ink btn-sm mt-sm" data-open-map="mudanza-from">Marcar en el mapa</button>
                     <p class="field-hint" id="mudanza-from-map-hint"></p>
                   </div>
                   <div class="form-group">
                     <label class="field-label" for="mudanza-to">Dirección de entrega</label>
                     <div class="search-field"><input type="text" id="mudanza-to" placeholder="Dirección o referencia de destino"></div>
-                    <button type="button" class="btn btn-outline-ink btn-sm" data-open-map="mudanza-to" style="margin-top:0.5rem;">Marcar en el mapa</button>
+                    <button type="button" class="btn btn-outline-ink btn-sm mt-sm" data-open-map="mudanza-to">Marcar en el mapa</button>
                     <p class="field-hint" id="mudanza-to-map-hint"></p>
                   </div>
                 </div>
@@ -510,7 +516,7 @@
       <span class="eyebrow">Confianza</span>
       <h2 class="section-title">Lo que dicen quienes ya viajaron con nosotros</h2>
       <div id="testimonials-grid" class="testimonials-grid"></div>
-      <a id="google-reviews-link" class="btn btn-outline-ink btn-sm" href="#" target="_blank" rel="noopener" hidden style="margin-top:1.5rem;">Ver nuestras reseñas en Google</a>
+      <a id="google-reviews-link" class="btn btn-outline-ink btn-sm mt-md" href="#" target="_blank" rel="noopener" hidden>Ver nuestras reseñas en Google</a>
     </div>
   </section>
   -->
@@ -724,7 +730,7 @@
   <!-- ============ CTA FINAL ============ -->
   <section class="section-pad">
     <div class="cta-final">
-      <span class="eyebrow" style="color:var(--green-300)">Movilidad 360 SV</span>
+      <span class="eyebrow text-accent">Movilidad 360 SV</span>
       <h2>Porque cada viaje tiene un destino, y nosotros hacemos que llegar sea más fácil.</h2>
       <p class="section-lede">Escríbenos y cotizamos tu viaje en minutos, sin filas ni complicaciones.</p>
       <a id="cta-wa" class="btn btn-gold btn-wa" href="#" target="_blank" rel="noopener">
@@ -850,8 +856,8 @@
   </div>
 </div>
 
-<script src="js/data.js?v=14"></script>
-<script src="js/app.js?v=14"></script>
-<script src="js/enhance.js?v=14"></script>
+<script src="js/data.js?v=15"></script>
+<script src="js/app.js?v=15"></script>
+<script src="js/enhance.js?v=15"></script>
 </body>
 </html>

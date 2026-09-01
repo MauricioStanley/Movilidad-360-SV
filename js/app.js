@@ -34,6 +34,20 @@
       .trim();
   }
 
+  // Escapa texto antes de insertarlo en innerHTML. Se usa en todo lo que
+  // viene de fuera de nuestro propio data.js (lo que el cliente escribe en
+  // los buscadores, y los nombres de lugar que devuelve Nominatim/OSM), para
+  // que un texto con caracteres < > " ' nunca se interprete como HTML.
+  function escapeHtml(str) {
+    return (str == null ? "" : String(str)).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    }[c]));
+  }
+
   function debounce(fn, wait) {
     let t;
     return function (...args) {
@@ -483,7 +497,7 @@
     }
     const token = localGeoToken;
     empty.classList.remove("show");
-    list.innerHTML = `<p class="suggestion-loading">Buscando "${filterText}"…</p>`;
+    list.innerHTML = `<p class="suggestion-loading">Buscando "${escapeHtml(filterText)}"…</p>`;
     debouncedGeocode(filterText, (results) => {
       if (token !== localGeoToken) return; // el cliente ya escribió otra cosa
       if (!results.length) {
@@ -504,8 +518,8 @@
         (p, i) => `
       <button type="button" class="suggestion-item" data-idx="${i}">
         <span>
-          <span class="suggestion-name">${p.name}</span><br>
-          <span class="suggestion-meta">${fixedMeta || `📍 ${p.fullName}`}</span>
+          <span class="suggestion-name">${escapeHtml(p.name)}</span><br>
+          <span class="suggestion-meta">${fixedMeta || `📍 ${escapeHtml(p.fullName)}`}</span>
         </span>
         <span class="suggestion-tag">Elegir</span>
       </button>`
@@ -1074,7 +1088,7 @@
     }
     const token = touristGeoToken;
     empty.classList.remove("show");
-    grid.innerHTML = `<p class="suggestion-loading">Buscando "${query}"…</p>`;
+    grid.innerHTML = `<p class="suggestion-loading">Buscando "${escapeHtml(query)}"…</p>`;
     debouncedGeocode(query, (results) => {
       if (token !== touristGeoToken) return;
       if (!results.length) {
@@ -1089,9 +1103,9 @@
           return `
           <button type="button" class="option-card" data-idx="${i}">
             <div class="option-card-top">
-              <span class="option-title">${p.name}</span>
+              <span class="option-title">${escapeHtml(p.name)}</span>
             </div>
-            <span class="option-desc">📍 ${p.fullName}</span>
+            <span class="option-desc">📍 ${escapeHtml(p.fullName)}</span>
             <div class="option-foot">
               <span class="price">desde ${formatMoney(estimatePrice(distanceKm))}</span>
               <span class="eta">${formatEta(estimateMinutes(distanceKm))}</span>
@@ -1339,7 +1353,7 @@
 
   function renderConfirmRows(rows) {
     $("#confirmRows").innerHTML = rows
-      .map((r) => `<div class="confirm-row"><span>${r.label}</span><strong>${r.value}</strong></div>`)
+      .map((r) => `<div class="confirm-row"><span>${escapeHtml(r.label)}</span><strong>${escapeHtml(r.value)}</strong></div>`)
       .join("");
   }
 
