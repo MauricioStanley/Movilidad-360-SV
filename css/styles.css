@@ -691,6 +691,11 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .section-pad { padding-inline: var(--gutter); padding-block: clamp(2.5rem, 5vw, 4rem); }
 .mono { font-family: var(--font-mono); }
+.mono-dim { opacity: 0.7; font-weight: 400; }
+.mt-sm { margin-top: 0.5rem; }
+.mt-md { margin-top: 1.5rem; }
+.mt-lg-block { margin-top: 1.6rem; display: block; }
+.text-accent { color: var(--green-300); }
 
 /* ---------- Accesibilidad: saltar al contenido ---------- */
 .skip-link {
