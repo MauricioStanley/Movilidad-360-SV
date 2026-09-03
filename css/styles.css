@@ -117,6 +117,7 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
 }
 .btn:hover { transform: translateY(-2px); }
 .btn:active { transform: translateY(0) scale(0.985); }
+.btn[hidden] { display: none; }
 .btn-gold {
   background: linear-gradient(180deg, var(--green-400), var(--green-500));
   color: var(--blue-950);
@@ -674,6 +675,7 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .quick-float:hover { transform: scale(1.05); box-shadow: 0 16px 32px -8px rgba(224,153,58,0.7); }
+.quick-float[hidden] { display: none; }
 .quick-float svg { width: 20px; height: 20px; flex: none; }
 @media (max-width: 380px) {
   .quick-float span { display: none; }
@@ -758,6 +760,14 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
 .stepper-value { font-family: var(--font-mono); font-weight: 700; min-width: 1.4ch; text-align: center; color: var(--paper); }
 .pets-row { flex: 1; min-width: 200px; padding: 0.6rem 0.9rem; }
 .pets-row .switch-label { font-size: 0.85rem; }
+.pets-fee-warning {
+  flex-basis: 100%;
+  margin: -0.4rem 0 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #ff6b6b;
+}
+.pets-fee-warning[hidden] { display: none; }
 
 /* ---------- Cotización: ruta real / aproximada ---------- */
 .quote-route-badge {
@@ -1221,6 +1231,7 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
 
 .confirm-recipient { display: grid; gap: 0.6rem; }
 .confirm-recipient-fields { display: grid; gap: 0.6rem; margin-top: 0.2rem; }
+.confirm-recipient-fields[hidden] { display: none; }
 .field-input {
   width: 100%; font-family: var(--font-body); font-size: 0.95rem;
   padding: 0.75rem 0.9rem; border-radius: var(--radius-md);
@@ -1230,6 +1241,7 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
 .field-input:focus { border-color: var(--silver-400); background: var(--blue-700); }
 
 .confirm-bank-accounts { display: grid; gap: 0.6rem; }
+.confirm-bank-accounts[hidden] { display: none; }
 .confirm-bank-account {
   display: flex; align-items: center; justify-content: space-between; gap: 0.8rem;
   padding: 0.7rem 0.9rem;
@@ -1259,9 +1271,15 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
 .confirm-bank-copy:hover { border-color: var(--green-500); }
 .confirm-bank-copy.copied { border-color: var(--green-500); background: var(--green-500); color: var(--blue-950); }
 
-.confirm-negotiate { display: grid; gap: 0.7rem; }
 .confirm-negotiate-panel { display: grid; gap: 0.6rem; }
+.confirm-negotiate-panel[hidden] { display: none; }
 .confirm-negotiate-note { font-size: 0.8rem; color: var(--paper-dim); line-height: 1.5; margin: 0; }
+
+.confirm-modal-foot { flex-direction: column; align-items: stretch; }
+.confirm-foot-row { display: flex; gap: 0.7rem; }
+.confirm-foot-row .btn { flex: 1; }
+.confirm-modal-foot .btn-wa { width: 100%; }
+#confirmNegotiateToggle.is-active { border-color: var(--green-500); background: rgba(124,179,66,0.16); color: var(--green-300); }
 
 /* ---------- Detalle de vehículo ---------- */
 .vehicle-card { position: relative; }
