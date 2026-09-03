@@ -399,7 +399,7 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
 .search-field {
   position: relative;
 }
-.search-field input[type="text"], .search-field input[type="search"] {
+.search-field input {
   width: 100%;
   font-family: var(--font-body);
   font-size: 1rem;
@@ -408,10 +408,20 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
   border: 1.5px solid var(--border-soft);
   background: var(--blue-800);
   color: var(--paper);
-  transition: border-color 0.2s ease, background 0.2s ease;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 .search-field input::placeholder { color: var(--paper-dim); opacity: 0.7; }
-.search-field input:focus { border-color: var(--silver-400); background: var(--blue-700); }
+.search-field input:focus {
+  border-color: var(--green-500);
+  background: var(--blue-700);
+  outline: none;
+  box-shadow: 0 0 0 4px rgba(124,179,66,0.16);
+}
+/* Quita las flechas nativas de los campos numéricos para que se vean
+   igual de pulidos que el resto (Chrome/Safari y Firefox). */
+.search-field input[type="number"] { -moz-appearance: textfield; }
+.search-field input[type="number"]::-webkit-outer-spin-button,
+.search-field input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .field-label { display: block; font-weight: 700; font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--paper); }
 .field-hint { font-size: 0.78rem; color: var(--paper-dim); margin-top: 0.4rem; }
 
@@ -432,7 +442,7 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
   background-size: 18px;
   padding-right: 2.6rem;
 }
-.field-select:focus { border-color: var(--silver-400); background-color: var(--blue-700); }
+.field-select:focus { border-color: var(--green-500); background-color: var(--blue-700); outline: none; box-shadow: 0 0 0 4px rgba(124,179,66,0.16); }
 .field-select option { background: var(--blue-800); color: var(--paper); }
 
 .suggestion-list {
@@ -1041,81 +1051,178 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
 .guide-card p { font-size: 0.85rem; color: var(--paper-dim); line-height: 1.6; }
 
 /* ---------- Trabaja con nosotros ---------- */
-.join-section { background: var(--blue-900); }
+.join-section { background: var(--blue-900); position: relative; overflow: hidden; }
+.join-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  pointer-events: none;
+  opacity: 0.5;
+  z-index: 0;
+}
+.join-glow-a { width: 480px; height: 480px; top: -220px; right: -160px; background: radial-gradient(circle, rgba(124,179,66,0.35), transparent 70%); }
+.join-glow-b { width: 420px; height: 420px; bottom: -200px; left: -140px; background: radial-gradient(circle, rgba(224,153,58,0.22), transparent 70%); }
+.join-section > .wrap { position: relative; z-index: 1; }
+
 .join-subtitle { font-family: var(--font-display); font-weight: 600; font-size: 1.15rem; margin-bottom: 0.9rem; color: var(--paper); }
 .join-grid {
   display: grid;
-  gap: 2rem;
-  grid-template-columns: 1.1fr 1fr;
+  gap: 2.2rem;
+  grid-template-columns: 1.15fr 1fr;
   align-items: start;
-  margin-top: 2rem;
+  margin-top: 2.2rem;
 }
 @media (max-width: 800px) { .join-grid { grid-template-columns: 1fr; } }
-.join-list li { display: grid; gap: 0.2rem; }
-.join-list li strong { margin-bottom: 0; }
+
+/* Roles: tarjetas con icono, en vez de la lista con emoji de antes. */
+.join-roles {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: 1fr;
+  padding: 0;
+  margin: 0;
+}
+@media (min-width: 560px) { .join-roles { grid-template-columns: 1fr 1fr; } }
+.join-role {
+  list-style: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.95rem 1.05rem;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--border-softer);
+  background: var(--blue-800);
+  transition: border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
+}
+.join-role:hover { border-color: var(--green-500); transform: translateY(-2px); background: var(--blue-700); }
+.join-role-icon {
+  flex: none;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(124,179,66,0.16);
+  color: var(--green-300);
+  transition: transform 0.25s cubic-bezier(.22,.7,.2,1);
+}
+.join-role:hover .join-role-icon { transform: scale(1.1) rotate(-4deg); }
+.join-role-icon svg { width: 20px; height: 20px; }
+.join-role-text { display: grid; gap: 0.2rem; font-size: 0.86rem; color: var(--paper-dim); line-height: 1.4; }
+.join-role-text strong { color: var(--paper); font-size: 0.92rem; font-weight: 700; }
+
 .join-values-lede { font-size: 0.9rem; color: var(--paper-dim); line-height: 1.6; margin-bottom: 1rem; }
-.join-checklist { display: grid; gap: 0.7rem; }
+.join-checklist { display: grid; gap: 0.7rem; padding: 0; margin: 0; }
 .join-checklist li {
   list-style: none;
-  padding: 0.8rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.8rem 1.1rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-softer);
   background: var(--blue-800);
   color: var(--paper);
   font-weight: 600;
   font-size: 0.9rem;
-  position: relative;
-  padding-left: 2.6rem;
 }
-.join-checklist li::before {
-  content: "✓";
-  position: absolute;
-  left: 1rem;
-  color: var(--green-400);
-  font-weight: 800;
+.join-check {
+  flex: none;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--green-500);
+  color: var(--blue-950);
 }
+.join-check svg { width: 15px; height: 15px; }
 
 .join-requirements {
   display: grid;
   gap: 1.2rem;
   grid-template-columns: 1fr 1fr;
-  margin-top: 2.2rem;
+  margin-top: 2.4rem;
 }
 @media (max-width: 700px) { .join-requirements { grid-template-columns: 1fr; } }
 .join-req-card {
-  padding: 1.4rem 1.5rem;
+  padding: 1.5rem;
   border-radius: var(--radius-lg);
   border: 1.5px solid var(--border-softer);
   background: var(--blue-800);
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
+.join-req-card:hover { border-color: var(--border-soft); transform: translateY(-3px); box-shadow: var(--shadow-sm); }
+.join-req-icon {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--blue-700);
+  color: var(--green-300);
+  margin-bottom: 1rem;
+}
+.join-req-icon svg { width: 21px; height: 21px; }
 .join-req-card h4 { font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; margin-bottom: 0.9rem; color: var(--paper); }
 .join-req-card ul { display: grid; gap: 0.55rem; }
 .join-req-card li { list-style: none; font-size: 0.86rem; color: var(--paper-dim); line-height: 1.4; padding-left: 1.1rem; position: relative; }
 .join-req-card li::before { content: "–"; position: absolute; left: 0; color: var(--silver-400); }
 
-.join-note { font-size: 0.8rem; color: var(--paper-dim); margin-top: 0.2rem; max-width: 65ch; }
+.join-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  color: var(--paper-dim);
+  margin-top: 0.2rem;
+  max-width: 65ch;
+}
+.join-note svg { flex: none; width: 18px; height: 18px; margin-top: 0.05rem; color: var(--silver-400); }
 
 .join-terms {
-  margin-top: 1.5rem;
-  padding: 1.2rem 1.4rem;
+  margin-top: 1.7rem;
+  padding: 1.3rem 1.5rem;
   border-radius: var(--radius-lg);
   background: rgba(224,153,58,0.12);
   border: 1.5px solid rgba(224,153,58,0.35);
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
 }
+.join-terms-icon {
+  flex: none;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(224,153,58,0.2);
+  color: #eab35c;
+}
+.join-terms-icon svg { width: 20px; height: 20px; }
 .join-terms h4 { font-family: var(--font-display); font-weight: 600; font-size: 1rem; margin: 0 0 0.7rem; color: #eab35c; }
 .join-terms ul { display: grid; gap: 0.5rem; margin: 0; padding: 0; }
 .join-terms li { list-style: none; font-size: 0.86rem; color: var(--paper-dim); line-height: 1.5; }
 .join-terms li strong { color: var(--paper); }
+@media (max-width: 560px) { .join-terms { flex-direction: column; } }
 
 .join-form {
-  margin-top: 2.2rem;
-  padding: 1.8rem;
+  margin-top: 2.4rem;
+  padding: 2rem;
   border-radius: var(--radius-lg);
   background: linear-gradient(135deg, var(--blue-800), var(--blue-700));
   border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-lg);
   display: grid;
   gap: 1.1rem;
   max-width: 640px;
+  position: relative;
+}
+.join-form::before {
+  content: "";
+  position: absolute;
+  inset: -1px -1px auto -1px;
+  height: 3px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: linear-gradient(90deg, var(--green-500), var(--green-300), var(--green-500));
+  background-size: 200% 100%;
 }
 .join-form .join-subtitle { margin-bottom: 0.2rem; }
 .join-driver-fields {
@@ -1129,6 +1236,28 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
 .join-driver-fields.open { max-height: 640px; opacity: 1; margin-top: 0.1rem; }
 .join-form-error { font-size: 0.82rem; color: #eab35c; margin: 0; }
 .join-form .btn-wa { justify-self: start; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .js-motion .join-form::before { animation: join-shimmer 3.5s linear infinite; }
+  @keyframes join-shimmer { to { background-position: -200% 0; } }
+
+  /* Momento propio de esta sección: cada casilla de "¿Por qué unirte?"
+     entra desde la izquierda y su check hace un pequeño "pop" al llegar,
+     como si se fueran marcando una a una. */
+  .js-motion .join-checklist li {
+    opacity: 0;
+    transform: translateX(-16px);
+    transition: opacity .45s cubic-bezier(.22,.7,.2,1), transform .45s cubic-bezier(.22,.7,.2,1);
+    transition-delay: calc(var(--i, 0) * 90ms);
+  }
+  .js-motion .join-checklist.is-visible li { opacity: 1; transform: none; }
+  .js-motion .join-checklist li .join-check {
+    transform: scale(0);
+    transition: transform .35s cubic-bezier(.16,1,.3,1);
+    transition-delay: calc(var(--i, 0) * 90ms + 220ms);
+  }
+  .js-motion .join-checklist.is-visible li .join-check { transform: scale(1); }
+}
 
 /* ---------- Preguntas frecuentes ---------- */
 .faq-section { background: var(--blue-950); }

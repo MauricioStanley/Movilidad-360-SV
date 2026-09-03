@@ -31,7 +31,7 @@
 <!-- Google Analytics (GA4). El script de arranque vive en js/ga.js (no
      inline) para que la CSP de arriba no necesite 'unsafe-inline'. -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-F59WF19VVM"></script>
-<script src="js/ga.js?v=19"></script>
+<script src="js/ga.js?v=20"></script>
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -40,7 +40,7 @@
 <meta name="apple-mobile-web-app-title" content="Movilidad 360">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="css/styles.css?v=19">
+<link rel="stylesheet" href="css/styles.css?v=20">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -572,6 +572,8 @@
 
   <!-- ============ TRABAJA CON NOSOTROS ============ -->
   <section class="section-pad join-section" id="trabaja-con-nosotros">
+    <div class="join-glow join-glow-a" aria-hidden="true"></div>
+    <div class="join-glow join-glow-b" aria-hidden="true"></div>
     <div class="wrap">
       <span class="eyebrow">Trabaja con nosotros</span>
       <h2 class="section-title">¿Quieres formar parte de Movilidad 360 SV?</h2>
@@ -580,30 +582,49 @@
       <div class="join-grid">
         <div>
           <h3 class="join-subtitle">Estamos buscando personas para</h3>
-          <ul class="about-values join-list">
-            <li><strong>🚗 Transporte de pasajeros</strong> Viajes locales, aeropuerto e interdepartamentales.</li>
-            <li><strong>📦 Encomiendas y entregas</strong> Recolección y entrega de paquetes.</li>
-            <li><strong>🧳 Viajes dentro de El Salvador</strong> Turismo y traslados a cualquier departamento.</li>
-            <li><strong>🤝 Atención al cliente</strong> Coordinar reservas y resolver dudas.</li>
-            <li><strong>📢 Ventas y promoción</strong> Dar a conocer nuestros servicios.</li>
-            <li><strong>🚘 Otros servicios de movilidad</strong> Cualquier idea que sume al equipo.</li>
+          <ul class="join-roles reveal-grid">
+            <li class="join-role">
+              <span class="join-role-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16l1.5-5.5A2 2 0 0 1 7.4 9h9.2a2 2 0 0 1 1.9 1.5L20 16"/><rect x="3" y="16" width="18" height="4" rx="1.4"/><circle cx="7.5" cy="20" r="1.6"/><circle cx="16.5" cy="20" r="1.6"/><path d="M7 13h10"/></svg></span>
+              <span class="join-role-text"><strong>Transporte de pasajeros</strong>Viajes locales, aeropuerto e interdepartamentales.</span>
+            </li>
+            <li class="join-role">
+              <span class="join-role-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="M4 7.5L12 12l8-4.5M12 12v9"/></svg></span>
+              <span class="join-role-text"><strong>Encomiendas y entregas</strong>Recolección y entrega de paquetes.</span>
+            </li>
+            <li class="join-role">
+              <span class="join-role-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 20l-6-2V4l6 2 6-2 6 2v14l-6-2-6 2Z"/><path d="M9 6v14M15 4v14"/></svg></span>
+              <span class="join-role-text"><strong>Viajes dentro de El Salvador</strong>Turismo y traslados a cualquier departamento.</span>
+            </li>
+            <li class="join-role">
+              <span class="join-role-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13v-1a8 8 0 0 1 16 0v1"/><rect x="3" y="13" width="4" height="6" rx="1.5"/><rect x="17" y="13" width="4" height="6" rx="1.5"/><path d="M20 19a3 3 0 0 1-3 3h-2"/></svg></span>
+              <span class="join-role-text"><strong>Atención al cliente</strong>Coordinar reservas y resolver dudas.</span>
+            </li>
+            <li class="join-role">
+              <span class="join-role-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10v4a1 1 0 0 0 1 1h2l7 4V5l-7 4H4a1 1 0 0 0-1 1Z"/><path d="M16 9a4 4 0 0 1 0 6"/><path d="M19 7a7.5 7.5 0 0 1 0 10"/></svg></span>
+              <span class="join-role-text"><strong>Ventas y promoción</strong>Dar a conocer nuestros servicios.</span>
+            </li>
+            <li class="join-role">
+              <span class="join-role-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg></span>
+              <span class="join-role-text"><strong>Otros servicios de movilidad</strong>Cualquier idea que sume al equipo.</span>
+            </li>
           </ul>
         </div>
         <div>
           <h3 class="join-subtitle">¿Por qué unirte?</h3>
           <p class="join-values-lede">Porque queremos construir una comunidad de trabajo confiable, profesional y de calidad, basada en:</p>
           <ul class="join-checklist">
-            <li>Responsabilidad</li>
-            <li>Respeto</li>
-            <li>Seguridad</li>
-            <li>Excelente atención al cliente</li>
-            <li>Trabajo en equipo</li>
+            <li><span class="join-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>Responsabilidad</li>
+            <li><span class="join-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>Respeto</li>
+            <li><span class="join-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>Seguridad</li>
+            <li><span class="join-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>Excelente atención al cliente</li>
+            <li><span class="join-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>Trabajo en equipo</li>
           </ul>
         </div>
       </div>
 
-      <div class="join-requirements">
+      <div class="join-requirements reveal-grid">
         <div class="join-req-card">
+          <div class="join-req-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h11"/></svg></div>
           <h4>Requisitos generales</h4>
           <ul>
             <li>Nombre completo</li>
@@ -616,6 +637,7 @@
           </ul>
         </div>
         <div class="join-req-card">
+          <div class="join-req-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16l1.5-5.5A2 2 0 0 1 7.4 9h9.2a2 2 0 0 1 1.9 1.5L20 16"/><rect x="3" y="16" width="18" height="4" rx="1.4"/><circle cx="7.5" cy="20" r="1.6"/><circle cx="16.5" cy="20" r="1.6"/></svg></div>
           <h4>Si quieres trabajar como conductor</h4>
           <ul>
             <li>Tipo de licencia que posees</li>
@@ -629,11 +651,14 @@
       </div>
 
       <div class="join-terms">
-        <h4>Condiciones para conductores que ceden viajes</h4>
-        <ul>
-          <li><strong>Inscripción inicial:</strong> $5.00 (pago único al integrarte).</li>
-          <li><strong>Comisión por viaje cedido:</strong> 10% del valor del viaje. Es negociable según el monto — por ejemplo, en viajes grandes (ej. $80) el porcentaje puede ajustarse.</li>
-        </ul>
+        <div class="join-terms-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5l3 2"/></svg></div>
+        <div>
+          <h4>Condiciones para conductores que ceden viajes</h4>
+          <ul>
+            <li><strong>Inscripción inicial:</strong> $5.00 (pago único al integrarte).</li>
+            <li><strong>Comisión por viaje cedido:</strong> 10% del valor del viaje. Es negociable según el monto — por ejemplo, en viajes grandes (ej. $80) el porcentaje puede ajustarse.</li>
+          </ul>
+        </div>
       </div>
 
       <form class="join-form" id="join-form" novalidate>
@@ -727,7 +752,7 @@
           </div>
         </div>
 
-        <p class="join-note">📄 La documentación adicional (DUI, licencia, tarjeta de circulación, etc.) se solicita más adelante, durante el proceso de selección.</p>
+        <p class="join-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>La documentación adicional (DUI, licencia, tarjeta de circulación, etc.) se solicita más adelante, durante el proceso de selección.</p>
         <p class="join-form-error" id="join-form-error" hidden>Escribe al menos tu nombre y tu teléfono para poder contactarte.</p>
 
         <button type="submit" class="btn btn-gold btn-wa" id="join-us-wa">
@@ -903,8 +928,8 @@
   </div>
 </div>
 
-<script src="js/data.js?v=19"></script>
-<script src="js/app.js?v=19"></script>
-<script src="js/enhance.js?v=19"></script>
+<script src="js/data.js?v=20"></script>
+<script src="js/app.js?v=20"></script>
+<script src="js/enhance.js?v=20"></script>
 </body>
 </html>
