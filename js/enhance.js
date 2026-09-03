@@ -75,7 +75,7 @@
 
   /* ---- Rejillas con entrada escalonada (flota + guías) ---- */
   function wireGridReveals() {
-    var grids = document.querySelectorAll(".vehicles-grid, .guides-grid, .drivers-grid");
+    var grids = document.querySelectorAll(".vehicles-grid, .guides-grid, .drivers-grid, .join-roles, .join-requirements");
     if (!grids.length || !("IntersectionObserver" in window)) return;
 
     var obs = new IntersectionObserver(
@@ -98,6 +98,30 @@
       }
       obs.observe(grid);
     });
+  }
+
+  /* ---- "¿Por qué unirte?": cada casilla entra y su check hace pop ---- */
+  function wireJoinChecklistReveal() {
+    var list = document.querySelector(".join-checklist");
+    if (!list || !("IntersectionObserver" in window)) return;
+
+    var items = list.children;
+    for (var i = 0; i < items.length; i++) {
+      items[i].style.setProperty("--i", i);
+    }
+
+    var obs = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) {
+            e.target.classList.add("is-visible");
+            obs.unobserve(e.target);
+          }
+        });
+      },
+      { threshold: 0.3, rootMargin: "0px 0px -40px 0px" }
+    );
+    obs.observe(list);
   }
 
   /* ---- Red de seguridad: ninguna .stop debe quedarse invisible ---- */
@@ -139,6 +163,7 @@
       root.classList.add("js-motion");
       wireStatCountUp();
       wireGridReveals();
+      wireJoinChecklistReveal();
       wireStopSafetyNet();
     }
   });
