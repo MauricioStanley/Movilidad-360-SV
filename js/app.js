@@ -78,8 +78,8 @@
     return Math.max(5, Math.round((distanceKm / speed) * 60) + 6);
   }
 
-  function estimatePrice(distanceKm) {
-    return distanceKm * CONFIG.ratePerKm;
+  function estimatePrice(distanceKm, pets) {
+    return distanceKm * CONFIG.ratePerKm + (pets ? CONFIG.petFee : 0);
   }
 
   function formatMoney(n) {
@@ -177,30 +177,18 @@
   /* ---------------- Ubicación del usuario ---------------- */
   let userLocation = null;
   let userLocationPlaceName = null; // texto legible (reverse geocoding), si se pudo obtener
+  let originSource = null; // "gps" | "search" — para no decir "tu ubicación" cuando el origen fue buscado
 
   function currentOrigin() {
     return userLocation || CONFIG.originFallback;
   }
   function originLabel() {
-    if (userLocation) return userLocationPlaceName ? `Tu ubicación (${userLocationPlaceName})` : "Tu ubicación actual";
+    if (userLocation) {
+      if (originSource === "search") return userLocationPlaceName || "Origen elegido";
+      return userLocationPlaceName ? `Tu ubicación (${userLocationPlaceName})` : "Tu ubicación actual";
+    }
     return CONFIG.originFallback.name;
   }
-  function googleMapsLink(lat, lng) {
-    return `https://www.google.com/maps?q=${lat},${lng}`;
-  }
-  // Enlace de Google Maps al punto de origen, solo cuando el origen es la
-  // ubicación real del usuario (el punto de referencia fijo ya tiene nombre).
-  function originMapsLink() {
-    return userLocation ? googleMapsLink(userLocation.lat, userLocation.lng) : null;
-  }
-  // Enlace de Google Maps para un punto marcado a mano (encomienda/mudanza),
-  // que puede venir de la ubicación real del cliente si usó el mapa para
-  // marcarlo. Si solo escribió una dirección de texto, no hay coordenadas
-  // y no se puede armar el enlace.
-  function pointMapsLink(point) {
-    return point ? googleMapsLink(point.lat, point.lng) : null;
-  }
-
   // Enlace de Waze que abre navegación turno-a-turno directo hacia el
   // punto donde está el cliente. Waze siempre traza la ruta desde la
   // ubicación real del teléfono que abre el enlace en ese momento, así
@@ -276,8 +264,11 @@
       (pos) => {
         userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         userLocationPlaceName = null;
+        originSource = "gps";
         if (statusEl) statusEl.textContent = "Ubicación activada ✓ Todas las cotizaciones se calculan desde tu posición actual.";
         if (bannerEl) bannerEl.classList.add("located");
+        const originInput = $("#origin-search-input");
+        if (originInput) originInput.value = "";
         cb(true);
         reverseGeocode(userLocation.lat, userLocation.lng).then((name) => {
           if (name) userLocationPlaceName = name;
@@ -289,6 +280,53 @@
         cb(false);
       },
       { timeout: 8000, maximumAge: 60000 }
+    );
+  }
+
+  // El origen también se puede elegir buscando una dirección (igual que se
+  // busca el destino), no solo con la ubicación GPS del celular — útil
+  // cuando el viaje sale de otro lugar (ej. la casa de otra persona).
+  function selectOriginFromSearch(place) {
+    userLocation = { lat: place.lat, lng: place.lng };
+    userLocationPlaceName = place.name;
+    originSource = "search";
+    const input = $("#origin-search-input");
+    if (input) input.value = place.name;
+    const list = $("#origin-suggestions");
+    if (list) list.innerHTML = "";
+    const statusEl = $("#geo-status");
+    if (statusEl) statusEl.textContent = `Origen elegido: ${place.name}. Todas las cotizaciones se calculan desde ahí.`;
+    const bannerEl = $(".geo-banner");
+    if (bannerEl) bannerEl.classList.add("located");
+    refreshAllQuotesForNewOrigin();
+    persistAll();
+  }
+
+  let originSearchToken = 0;
+  function wireOriginSearch() {
+    const input = $("#origin-search-input");
+    const list = $("#origin-suggestions");
+    if (!input || !list) return;
+    input.addEventListener(
+      "input",
+      debounce(() => {
+        const query = input.value.trim();
+        originSearchToken++;
+        const token = originSearchToken;
+        if (query.length < 3) {
+          list.innerHTML = "";
+          return;
+        }
+        list.innerHTML = `<p class="suggestion-loading">Buscando "${escapeHtml(query)}"…</p>`;
+        geocodeSearch(query + ", El Salvador").then((results) => {
+          if (token !== originSearchToken) return; // el cliente ya escribió otra cosa
+          if (!results.length) {
+            list.innerHTML = `<p class="suggestion-loading">No encontramos esa dirección.</p>`;
+            return;
+          }
+          renderSuggestionItems(list, results, null, selectOriginFromSearch);
+        });
+      }, 400)
     );
   }
 
@@ -339,7 +377,23 @@
       paxPetsState[prefix].pets = petsBtn.classList.contains("on");
       petsBtn.setAttribute("aria-pressed", String(paxPetsState[prefix].pets));
       persistAll();
+      // La mascota suma un recargo fijo al precio: si ya hay una cotización
+      // mostrada para esta parada, se recalcula al toque.
+      recomputeQuoteForPets(prefix);
     });
+  }
+
+  // Vuelve a calcular el precio de la última cotización de una parada
+  // cuando cambia si lleva mascota o no (el recargo por mascota se suma
+  // al precio, así que hay que refrescar el número mostrado).
+  function recomputeQuoteForPets(prefix) {
+    if (prefix === "movilizarte" && lastMovilizarteSelection) selectMovilizarteDestination(lastMovilizarteSelection);
+    else if (prefix === "aeropuerto" && lastAirportSelection) selectAirport(lastAirportSelection);
+    else if (prefix === "departamento" && lastDepartmentSelection) selectDepartment(lastDepartmentSelection);
+    else if (prefix === "turismo") {
+      if (lastTourismRouteSelection) selectTouristRoute(lastTourismRouteSelection);
+      else if (lastTourismSelection) selectTourism(lastTourismSelection);
+    } else if (prefix === "tarifafija") updateFixedQuote();
   }
 
   function paxPetsFor(prefix) {
@@ -384,21 +438,25 @@
 
   function buildQuoteMessage(prefix, { originName, destName, price, minutes, distanceKm, extraLine, real }, paymentMethod) {
     const { passengers, pets } = paxPetsFor(prefix);
-    const mapsLink = originMapsLink();
-    const wazeLinkUrl = originWazeLink();
+    // Dos tramos en Waze en vez de un link de Google Maps: primero la ruta
+    // del conductor hacia el punto de recogida (se abre estando él en su
+    // ubicación real), y luego la ruta de la recogida hacia el destino del
+    // cliente (se abre ya estando ahí, así que también coincide).
+    const wazeToPickup = originWazeLink();
+    const routeData = quoteRouteData[prefix];
+    const wazeToDest = routeData && routeData.destLatLng ? wazeLink(routeData.destLatLng[0], routeData.destLatLng[1]) : null;
     return (
       `Hola *MOVILIDAD 360 SV* 👋\n\n` +
       `Quiero cotizar un *${SERVICE_NAMES[prefix]}*:\n` +
-      `📍 Desde: ${originName}` +
-      (mapsLink ? ` — ${mapsLink}` : "") +
-      `\n` +
-      (wazeLinkUrl ? `🧭 Ruta en Waze hacia mí: ${wazeLinkUrl}\n` : "") +
+      `📍 Desde: ${originName}\n` +
+      (wazeToPickup ? `🧭 Ruta en Waze hacia mí (recogida): ${wazeToPickup}\n` : "") +
       `🎯 Hasta: ${destName}\n` +
+      (wazeToDest ? `🧭 Ruta en Waze de la recogida al destino: ${wazeToDest}\n` : "") +
       `📏 Distancia ${real ? "real por carretera" : "aproximada"}: ${distanceKm.toFixed(1)} km\n` +
       `💵 Precio estimado: ${formatMoney(price)}\n` +
       `⏱️ Tiempo estimado: ${formatEta(minutes)}\n` +
       `👥 Pasajeros: ${passengers}\n` +
-      `🐾 Mascota: ${pets ? "Sí" : "No"}\n` +
+      `🐾 Mascota: ${pets ? `Sí (+${formatMoney(CONFIG.petFee)})` : "No"}\n` +
       `💳 Método de pago: ${paymentMethod}` +
       (extraLine ? `\n${extraLine}` : "") +
       `\n⚠️ ${cancellationLine(price)}` +
@@ -458,7 +516,7 @@
             { label: "Tiempo estimado", value: formatEta(data.minutes) },
             { label: "Precio estimado", value: formatMoney(data.price) },
             { label: "Pasajeros", value: String(passengers) },
-            { label: "Mascota", value: pets ? "Sí" : "No" },
+            { label: "Mascota", value: pets ? `Sí (+${formatMoney(CONFIG.petFee)})` : "No" },
           ],
           buildMessage: (paymentMethod) => buildQuoteMessage(prefix, data, paymentMethod),
         });
@@ -551,7 +609,7 @@
       coords: route.coords,
       real: route.real,
     };
-    const price = estimatePrice(route.distanceKm);
+    const price = estimatePrice(route.distanceKm, paxPetsFor("movilizarte").pets);
     showQuote("movilizarte", {
       originName,
       destName: place.name,
@@ -613,7 +671,7 @@
       coords: route.coords,
       real: route.real,
     };
-    const price = estimatePrice(route.distanceKm);
+    const price = estimatePrice(route.distanceKm, paxPetsFor("aeropuerto").pets);
     showQuote("aeropuerto", {
       originName,
       destName: airport.name,
@@ -702,12 +760,10 @@
             `📦 Tamaño: ${parcelSizeLabels[parcelState.size]}\n` +
             `🚀 Urgencia: ${parcelState.urgent ? "Mismo día (express)" : "Estándar"}\n` +
             `⚠️ Frágil: ${parcelState.fragile ? "Sí" : "No"}\n` +
-            `📍 Recolección: ${from}` +
-            (pointMapsLink(parcelState.fromPoint) ? ` — ${pointMapsLink(parcelState.fromPoint)}` : "") +
-            `\n` +
+            `📍 Recolección: ${from}\n` +
             (pointWazeLink(parcelState.fromPoint) ? `🧭 Ruta en Waze hacia la recolección: ${pointWazeLink(parcelState.fromPoint)}\n` : "") +
             `🎯 Entrega: ${to}` +
-            (pointMapsLink(parcelState.toPoint) ? ` — ${pointMapsLink(parcelState.toPoint)}` : "") +
+            (pointWazeLink(parcelState.toPoint) ? `\n🧭 Ruta en Waze de la recolección a la entrega: ${pointWazeLink(parcelState.toPoint)}` : "") +
             (distanceKm !== null ? `\n📏 Distancia ${real ? "real por carretera" : "aproximada"}: ${distanceKm.toFixed(1)} km` : "") +
             (notes ? `\n📝 Instrucciones: ${notes}` : "") +
             `\n💵 Precio estimado: ${formatMoney(price)}\n` +
@@ -816,12 +872,10 @@
             `Hola *MOVILIDAD 360 SV* 👋\n\n` +
             `Quiero cotizar una *mudanza*:\n` +
             `🏠 Tamaño: ${mudanzaSizeLabels[mudanzaState.size]}\n` +
-            `📍 Recolección: ${from}` +
-            (pointMapsLink(mudanzaState.fromPoint) ? ` — ${pointMapsLink(mudanzaState.fromPoint)}` : "") +
-            `\n` +
+            `📍 Recolección: ${from}\n` +
             (pointWazeLink(mudanzaState.fromPoint) ? `🧭 Ruta en Waze hacia la recolección: ${pointWazeLink(mudanzaState.fromPoint)}\n` : "") +
             `🎯 Entrega: ${to}` +
-            (pointMapsLink(mudanzaState.toPoint) ? ` — ${pointMapsLink(mudanzaState.toPoint)}` : "") +
+            (pointWazeLink(mudanzaState.toPoint) ? `\n🧭 Ruta en Waze de la recolección a la entrega: ${pointWazeLink(mudanzaState.toPoint)}` : "") +
             (notes ? `\n📝 Detalles: ${notes}` : "") +
             `\n💳 Método de pago preferido: ${paymentMethod}` +
             `\n⚠️ ${cancellationLine(null)}` +
@@ -897,8 +951,10 @@
   function updateFixedQuote() {
     const dest = FIXED_ROUTES.destinations[fixedRouteIdx];
     if (!dest) return;
+    const { passengers, pets } = paxPetsFor("tarifafija");
+    const finalPrice = dest.price + (pets ? CONFIG.petFee : 0);
     $("#quote-tarifafija-route").textContent = `${FIXED_ROUTES.origin} → ${dest.name}`;
-    $("#quote-tarifafija-price").textContent = formatMoney(dest.price);
+    $("#quote-tarifafija-price").textContent = formatMoney(finalPrice);
     $("#quote-tarifafija-eta").textContent = dest.negotiable
       ? "Precio negociable, se confirma por WhatsApp."
       : "Precio fijo, sin cálculo de distancia.";
@@ -907,25 +963,24 @@
     const waBtn = $("#wa-tarifafija");
     if (waBtn) {
       waBtn.onclick = () => {
-        const { passengers, pets } = paxPetsFor("tarifafija");
         openConfirmModal({
-          price: dest.price,
+          price: finalPrice,
           rows: [
             { label: "Servicio", value: "Tarifa fija" },
             { label: "Desde", value: FIXED_ROUTES.origin },
             { label: "Hasta", value: dest.name },
-            { label: "Precio", value: formatMoney(dest.price) + (dest.negotiable ? " (negociable)" : "") },
+            { label: "Precio", value: formatMoney(finalPrice) + (dest.negotiable ? " (negociable)" : "") },
           ],
           buildMessage: (paymentMethod) =>
             `Hola *MOVILIDAD 360 SV* 👋\n\n` +
             `Quiero reservar un viaje con *tarifa fija*:\n` +
             `📍 Desde: ${FIXED_ROUTES.origin}\n` +
             `🎯 Hasta: ${dest.name}\n` +
-            `💵 Precio: ${formatMoney(dest.price)}${dest.negotiable ? " (negociable, a confirmar)" : ""}\n` +
+            `💵 Precio: ${formatMoney(finalPrice)}${dest.negotiable ? " (negociable, a confirmar)" : ""}\n` +
             `👥 Pasajeros: ${passengers}\n` +
-            `🐾 Mascota: ${pets ? "Sí" : "No"}\n` +
+            `🐾 Mascota: ${pets ? `Sí (+${formatMoney(CONFIG.petFee)})` : "No"}\n` +
             `💳 Método de pago: ${paymentMethod}` +
-            `\n⚠️ ${cancellationLine(dest.price)}` +
+            `\n⚠️ ${cancellationLine(finalPrice)}` +
             `\n\n¿Podrían confirmar disponibilidad?`,
         });
       };
@@ -988,7 +1043,7 @@
       coords: route.coords,
       real: route.real,
     };
-    const price = estimatePrice(route.distanceKm);
+    const price = estimatePrice(route.distanceKm, paxPetsFor("departamento").pets);
     showQuote("departamento", {
       originName,
       destName,
@@ -1139,7 +1194,7 @@
       coords: route.coords,
       real: route.real,
     };
-    const price = estimatePrice(route.distanceKm);
+    const price = estimatePrice(route.distanceKm, paxPetsFor("turismo").pets);
     showQuote("turismo", {
       originName,
       destName: place.name,
@@ -1204,7 +1259,7 @@
       coords: coordsAll.length ? coordsAll : null,
       real: allReal,
     };
-    const price = estimatePrice(totalKm);
+    const price = estimatePrice(totalKm, paxPetsFor("turismo").pets);
     showQuote("turismo", {
       originName,
       destName: destLabel,
@@ -1350,6 +1405,30 @@
      ===================================================================== */
   let confirmModalCtx = null;
   let confirmPaymentMethod = CONFIG.paymentMethods[0];
+  let confirmRecipient = "self"; // "self" | "other"
+  let confirmBankChoice = null; // { bank, number } cuando el pago es por transferencia
+
+  // Cliente frecuente: no hay cuentas ni backend, así que esto es solo un
+  // contador local del navegador (se resetea si borra el caché o cambia de
+  // dispositivo) — sirve como recordatorio motivacional, no como control
+  // real. El descuento real siempre lo decide el equipo por WhatsApp
+  // (honor system: el cliente lo menciona, el equipo confirma el precio).
+  const FREQUENT_STORAGE_KEY = "movilidad360_trip_requests_count";
+  const FREQUENT_THRESHOLD = 3;
+  function getFrequentCount() {
+    try {
+      return Number(localStorage.getItem(FREQUENT_STORAGE_KEY)) || 0;
+    } catch (err) {
+      return 0;
+    }
+  }
+  function bumpFrequentCount() {
+    try {
+      localStorage.setItem(FREQUENT_STORAGE_KEY, String(getFrequentCount() + 1));
+    } catch (err) {
+      /* localStorage no disponible (privado/bloqueado); no es crítico. */
+    }
+  }
 
   function renderConfirmRows(rows) {
     $("#confirmRows").innerHTML = rows
@@ -1368,8 +1447,65 @@
           b.classList.toggle("selected", b === btn);
           b.setAttribute("aria-pressed", String(b === btn));
         });
+        renderConfirmBankAccounts();
       });
     });
+  }
+
+  // Cuentas para transferencia (BAC / Cuenta Agrícola): solo se muestran si
+  // el método de pago elegido es "Transferencia". El cliente elige una y
+  // puede copiar el número con un botón.
+  function renderConfirmBankAccounts() {
+    const box = $("#confirmBankAccounts");
+    if (!box) return;
+    const show = confirmPaymentMethod === "Transferencia" && (CONFIG.bankAccounts || []).length > 0;
+    box.hidden = !show;
+    if (!show) {
+      confirmBankChoice = null;
+      return;
+    }
+    if (!confirmBankChoice) confirmBankChoice = CONFIG.bankAccounts[0];
+    box.innerHTML = CONFIG.bankAccounts
+      .map(
+        (acc) => `
+      <div class="confirm-bank-account${acc.number === confirmBankChoice.number ? " selected" : ""}" data-bank="${escapeHtml(acc.bank)}" data-number="${escapeHtml(acc.number)}" role="button" tabindex="0">
+        <div class="confirm-bank-account-info"><b>${escapeHtml(acc.bank)}</b><span>${escapeHtml(acc.number)}</span></div>
+        <button type="button" class="confirm-bank-copy" data-copy="${escapeHtml(acc.number)}">Copiar</button>
+      </div>`
+      )
+      .join("");
+    $$(".confirm-bank-account", box).forEach((row) => {
+      row.addEventListener("click", (e) => {
+        if (e.target.closest(".confirm-bank-copy")) return;
+        confirmBankChoice = { bank: row.dataset.bank, number: row.dataset.number };
+        $$(".confirm-bank-account", box).forEach((r) => r.classList.toggle("selected", r === row));
+      });
+    });
+    $$(".confirm-bank-copy", box).forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        try {
+          await navigator.clipboard.writeText(btn.dataset.copy);
+          btn.textContent = "¡Copiado!";
+          btn.classList.add("copied");
+          setTimeout(() => {
+            btn.textContent = "Copiar";
+            btn.classList.remove("copied");
+          }, 1800);
+        } catch (err) {
+          /* portapapeles no disponible (navegador viejo o sin permiso); el
+             número ya está visible en pantalla para copiarlo a mano. */
+        }
+      });
+    });
+  }
+
+  function renderConfirmRecipientPills() {
+    $$("#confirmRecipientPills .pill-option").forEach((btn) => {
+      btn.classList.toggle("selected", btn.dataset.recipient === confirmRecipient);
+      btn.setAttribute("aria-pressed", String(btn.dataset.recipient === confirmRecipient));
+    });
+    $("#confirmRecipientFields").hidden = confirmRecipient !== "other";
   }
 
   function renderCancellationNotice(price) {
@@ -1383,7 +1519,22 @@
     confirmModalCtx = { buildMessage };
     renderConfirmRows(rows);
     renderConfirmPaymentPills();
+    renderConfirmBankAccounts();
     renderCancellationNotice(price);
+
+    // Se reinician los campos opcionales (destinatario / negociación) en
+    // cada apertura para que no se filtre información de una cotización a
+    // otra sin querer.
+    confirmRecipient = "self";
+    renderConfirmRecipientPills();
+    $("#confirmRecipientName").value = "";
+    $("#confirmRecipientPhone").value = "";
+    $("#confirmNegotiatePanel").hidden = true;
+    $("#confirmNegotiatePrice").value = "";
+
+    const frequentNote = $("#confirmFrequentNote");
+    if (frequentNote) frequentNote.hidden = getFrequentCount() < FREQUENT_THRESHOLD;
+
     $("#confirmModal").classList.add("open");
   }
 
@@ -1398,11 +1549,46 @@
     $("#confirmModal").addEventListener("click", (e) => {
       if (e.target.id === "confirmModal") closeConfirmModal();
     });
+
+    $$("#confirmRecipientPills .pill-option").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        confirmRecipient = btn.dataset.recipient;
+        renderConfirmRecipientPills();
+      });
+    });
+
+    $("#confirmNegotiateToggle").addEventListener("click", () => {
+      const panel = $("#confirmNegotiatePanel");
+      panel.hidden = !panel.hidden;
+    });
+
     $("#confirmSendBtn").addEventListener("click", () => {
       if (!confirmModalCtx) return;
-      const msg = confirmModalCtx.buildMessage(confirmPaymentMethod);
+      let msg = confirmModalCtx.buildMessage(confirmPaymentMethod);
+
+      if (confirmRecipient === "other") {
+        const name = $("#confirmRecipientName").value.trim();
+        const phone = $("#confirmRecipientPhone").value.trim();
+        msg += `\n\n👤 Este viaje es para: ${name || "(el cliente indicará el nombre por WhatsApp)"}`;
+        if (phone) msg += `\n📱 Teléfono para coordinar con esa persona: ${phone}`;
+      }
+
+      if (confirmPaymentMethod === "Transferencia" && confirmBankChoice) {
+        msg += `\n🏦 Transferencia a: ${confirmBankChoice.bank} — cuenta ${confirmBankChoice.number}`;
+      }
+
+      const negotiatePrice = $("#confirmNegotiatePrice").value.trim();
+      if (negotiatePrice) {
+        msg += `\n🤝 El cliente propone pagar: ${formatMoney(Number(negotiatePrice))} (precio a negociar, sujeto a tráfico, hora, aire acondicionado y clima).`;
+      }
+
+      if (getFrequentCount() >= FREQUENT_THRESHOLD) {
+        msg += `\n🔁 Cliente frecuente (varias solicitudes previas desde este dispositivo) — ¿aplica algún descuento?`;
+      }
+
       trackEvent("whatsapp_click", { link_id: "confirm-send" });
       window.open(waLink(msg), "_blank", "noopener");
+      bumpFrequentCount();
       closeConfirmModal();
     });
   }
@@ -2264,6 +2450,7 @@
     $("#btn-locate").addEventListener("click", () => {
       requestGeolocation(refreshAllQuotesForNewOrigin);
     });
+    wireOriginSearch();
 
     // Parada 3
     wireParcelForm();
