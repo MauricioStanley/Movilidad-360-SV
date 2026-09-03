@@ -31,7 +31,7 @@
 <!-- Google Analytics (GA4). El script de arranque vive en js/ga.js (no
      inline) para que la CSP de arriba no necesite 'unsafe-inline'. -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-F59WF19VVM"></script>
-<script src="js/ga.js?v=18"></script>
+<script src="js/ga.js?v=19"></script>
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -40,7 +40,7 @@
 <meta name="apple-mobile-web-app-title" content="Movilidad 360">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="css/styles.css?v=18">
+<link rel="stylesheet" href="css/styles.css?v=19">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -239,23 +239,26 @@
                 <div class="form-grid two-col">
                   <div class="form-group">
                     <label class="field-label" for="parcel-from">Punto de recolección</label>
-                    <div class="search-field"><input type="text" id="parcel-from" placeholder="Dirección o referencia de recolección"></div>
+                    <div class="search-field"><input type="text" id="parcel-from" placeholder="Busca una dirección de recolección" autocomplete="off"></div>
+                    <div class="suggestion-list" id="parcel-from-suggestions"></div>
                     <button type="button" class="btn btn-outline-ink btn-sm mt-sm" data-open-map="parcel-from">Marcar en el mapa</button>
                     <p class="field-hint" id="parcel-from-map-hint"></p>
                   </div>
                   <div class="form-group">
                     <label class="field-label" for="parcel-to">Punto de entrega</label>
-                    <div class="search-field"><input type="text" id="parcel-to" placeholder="Dirección o referencia de entrega"></div>
+                    <div class="search-field"><input type="text" id="parcel-to" placeholder="Busca una dirección de entrega" autocomplete="off"></div>
+                    <div class="suggestion-list" id="parcel-to-suggestions"></div>
                     <button type="button" class="btn btn-outline-ink btn-sm mt-sm" data-open-map="parcel-to">Marcar en el mapa</button>
                     <p class="field-hint" id="parcel-to-map-hint"></p>
                   </div>
                 </div>
-                <p class="field-hint">Marca ambos puntos en el mapa para sumar la distancia real de ruta entre recolección y entrega al precio base.</p>
+                <p class="field-hint">Busca ambas direcciones o márcalas en el mapa para sumar la distancia real de ruta entre recolección y entrega al precio base.</p>
 
                 <div class="form-group switch-row">
                   <div>
                     <div class="switch-label">Entrega el mismo día (express)</div>
                     <div class="switch-sub">Prioridad sobre otras encomiendas del día</div>
+                    <p class="option-fee-warning" id="parcel-urgent-warning" hidden>Este servicio tiene un recargo de +$5.00.</p>
                   </div>
                   <button type="button" class="switch" id="parcel-urgent" aria-pressed="false" aria-label="Entrega el mismo día (express)"></button>
                 </div>
@@ -401,13 +404,15 @@
                 <div class="form-grid two-col">
                   <div class="form-group">
                     <label class="field-label" for="mudanza-from">Dirección de recolección</label>
-                    <div class="search-field"><input type="text" id="mudanza-from" placeholder="Dirección o referencia de origen"></div>
+                    <div class="search-field"><input type="text" id="mudanza-from" placeholder="Busca una dirección de origen" autocomplete="off"></div>
+                    <div class="suggestion-list" id="mudanza-from-suggestions"></div>
                     <button type="button" class="btn btn-outline-ink btn-sm mt-sm" data-open-map="mudanza-from">Marcar en el mapa</button>
                     <p class="field-hint" id="mudanza-from-map-hint"></p>
                   </div>
                   <div class="form-group">
                     <label class="field-label" for="mudanza-to">Dirección de entrega</label>
-                    <div class="search-field"><input type="text" id="mudanza-to" placeholder="Dirección o referencia de destino"></div>
+                    <div class="search-field"><input type="text" id="mudanza-to" placeholder="Busca una dirección de destino" autocomplete="off"></div>
+                    <div class="suggestion-list" id="mudanza-to-suggestions"></div>
                     <button type="button" class="btn btn-outline-ink btn-sm mt-sm" data-open-map="mudanza-to">Marcar en el mapa</button>
                     <p class="field-hint" id="mudanza-to-map-hint"></p>
                   </div>
@@ -898,8 +903,8 @@
   </div>
 </div>
 
-<script src="js/data.js?v=18"></script>
-<script src="js/app.js?v=18"></script>
-<script src="js/enhance.js?v=18"></script>
+<script src="js/data.js?v=19"></script>
+<script src="js/app.js?v=19"></script>
+<script src="js/enhance.js?v=19"></script>
 </body>
 </html>

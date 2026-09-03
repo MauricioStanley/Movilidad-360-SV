@@ -786,7 +786,7 @@
     const inputId = which === "from" ? "#parcel-from" : "#parcel-to";
     const hintId = which === "from" ? "#parcel-from-map-hint" : "#parcel-to-map-hint";
     $(inputId).value = place.name;
-    $(hintId).textContent = "Punto marcado en el mapa ✓";
+    $(hintId).textContent = "Punto confirmado ✓";
     if (which === "from") {
       parcelState.fromPoint = { lat: place.lat, lng: place.lng };
       parcelState.fromName = place.name;
@@ -812,10 +812,12 @@
     });
 
     const urgentSwitch = $("#parcel-urgent");
+    const urgentWarning = $("#parcel-urgent-warning");
     urgentSwitch.addEventListener("click", () => {
       urgentSwitch.classList.toggle("on");
       parcelState.urgent = urgentSwitch.classList.contains("on");
       urgentSwitch.setAttribute("aria-pressed", String(parcelState.urgent));
+      if (urgentWarning) urgentWarning.hidden = !parcelState.urgent;
       updateParcelQuote();
     });
 
@@ -838,6 +840,45 @@
       debouncedParcelQuote();
     });
     $("#parcel-notes").addEventListener("input", debouncedParcelQuote);
+
+    wireAddressAutocomplete("parcel-from", "parcel-from-suggestions", (place) => selectParcelPoint("from", place));
+    wireAddressAutocomplete("parcel-to", "parcel-to-suggestions", (place) => selectParcelPoint("to", place));
+  }
+
+  // Autocompletado de direcciones reutilizable: busca en Nominatim mientras
+  // el cliente escribe y pinta sugerencias debajo del campo (mismo patrón
+  // que el buscador de origen y el de "¿Necesitas movilizarte?"). Se usa en
+  // los puntos A/B de encomienda y mudanza, que antes solo se podían marcar
+  // en el mapa o escribir a mano sin coordenadas.
+  function wireAddressAutocomplete(inputId, listId, onSelect) {
+    const input = $(`#${inputId}`);
+    const list = $(`#${listId}`);
+    if (!input || !list) return;
+    let token = 0;
+    input.addEventListener(
+      "input",
+      debounce(() => {
+        const query = input.value.trim();
+        token++;
+        const myToken = token;
+        if (query.length < 3) {
+          list.innerHTML = "";
+          return;
+        }
+        list.innerHTML = `<p class="suggestion-loading">Buscando "${escapeHtml(query)}"…</p>`;
+        geocodeSearch(query + ", El Salvador").then((results) => {
+          if (myToken !== token) return; // el cliente ya escribió otra cosa
+          if (!results.length) {
+            list.innerHTML = `<p class="suggestion-loading">No encontramos esa dirección. Puedes marcarla en el mapa.</p>`;
+            return;
+          }
+          renderSuggestionItems(list, results, null, (place) => {
+            list.innerHTML = "";
+            onSelect(place);
+          });
+        });
+      }, 400)
+    );
   }
   const debouncedParcelQuote = debounce(updateParcelQuote, 250);
 
@@ -895,7 +936,7 @@
     const inputId = which === "from" ? "#mudanza-from" : "#mudanza-to";
     const hintId = which === "from" ? "#mudanza-from-map-hint" : "#mudanza-to-map-hint";
     $(inputId).value = place.name;
-    $(hintId).textContent = "Punto marcado en el mapa ✓";
+    $(hintId).textContent = "Punto confirmado ✓";
     if (which === "from") {
       mudanzaState.fromPoint = { lat: place.lat, lng: place.lng };
       mudanzaState.fromName = place.name;
@@ -931,6 +972,9 @@
       debouncedMudanzaQuote();
     });
     $("#mudanza-notes").addEventListener("input", debouncedMudanzaQuote);
+
+    wireAddressAutocomplete("mudanza-from", "mudanza-from-suggestions", (place) => selectMudanzaPoint("from", place));
+    wireAddressAutocomplete("mudanza-to", "mudanza-to-suggestions", (place) => selectMudanzaPoint("to", place));
   }
   const debouncedMudanzaQuote = debounce(updateMudanzaQuote, 250);
 
