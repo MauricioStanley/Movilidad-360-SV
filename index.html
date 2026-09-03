@@ -31,7 +31,7 @@
 <!-- Google Analytics (GA4). El script de arranque vive en js/ga.js (no
      inline) para que la CSP de arriba no necesite 'unsafe-inline'. -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-F59WF19VVM"></script>
-<script src="js/ga.js?v=17"></script>
+<script src="js/ga.js?v=18"></script>
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -40,7 +40,7 @@
 <meta name="apple-mobile-web-app-title" content="Movilidad 360">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="css/styles.css?v=17">
+<link rel="stylesheet" href="css/styles.css?v=18">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -857,13 +857,10 @@
 
       <div class="confirm-bank-accounts" id="confirmBankAccounts" hidden></div>
 
-      <div class="confirm-negotiate">
-        <button type="button" class="btn btn-outline-ink btn-sm" id="confirmNegotiateToggle">¿Deseas negociar tu viaje?</button>
-        <div class="confirm-negotiate-panel" id="confirmNegotiatePanel" hidden>
-          <p class="confirm-negotiate-note">El precio mostrado es un estimado y se puede negociar hasta cierto punto: se toman en cuenta el tráfico, la hora del viaje, si el vehículo lleva aire acondicionado, el clima, entre otros factores. Escribe cuánto te gustaría pagar y lo revisamos contigo por WhatsApp.</p>
-          <label class="field-label" for="confirmNegotiatePrice">¿Cuánto te gustaría pagar? (USD)</label>
-          <input type="number" min="0" step="0.5" inputmode="decimal" id="confirmNegotiatePrice" class="field-input" placeholder="Ej. 5.00">
-        </div>
+      <div class="confirm-negotiate-panel" id="confirmNegotiatePanel" hidden>
+        <p class="confirm-negotiate-note">El precio mostrado es un estimado y se puede negociar hasta cierto punto: se toman en cuenta el tráfico, la hora del viaje, si el vehículo lleva aire acondicionado, el clima, entre otros factores. Escribe cuánto te gustaría pagar y lo revisamos contigo por WhatsApp.</p>
+        <label class="field-label" for="confirmNegotiatePrice">¿Cuánto te gustaría pagar? (USD)</label>
+        <input type="number" min="0" step="0.5" inputmode="decimal" id="confirmNegotiatePrice" class="field-input" placeholder="Ej. 5.00">
       </div>
 
       <p class="confirm-frequent-note" id="confirmFrequentNote" hidden>🎉 Ya has cotizado varias veces con nosotros desde este dispositivo — coméntanoslo por WhatsApp, como cliente frecuente podemos ofrecerte un mejor precio.</p>
@@ -871,8 +868,11 @@
       <p class="confirm-cancellation" id="confirmCancellation"></p>
       <p class="confirm-insurance">🛡️ Tu viaje incluye nuestro compromiso: lo finalizamos sin importar las condiciones.</p>
     </div>
-    <div class="map-modal-foot">
-      <button class="btn btn-outline-ink btn-sm" id="confirmEditBtn">Editar</button>
+    <div class="map-modal-foot confirm-modal-foot">
+      <div class="confirm-foot-row">
+        <button class="btn btn-outline-ink btn-sm" id="confirmEditBtn">Editar</button>
+        <button type="button" class="btn btn-outline-ink btn-sm" id="confirmNegotiateToggle">¿Deseas negociar tu viaje?</button>
+      </div>
       <button class="btn btn-gold btn-sm btn-wa" id="confirmSendBtn">Confirmar y enviar por WhatsApp</button>
     </div>
   </div>
@@ -898,8 +898,8 @@
   </div>
 </div>
 
-<script src="js/data.js?v=17"></script>
-<script src="js/app.js?v=17"></script>
-<script src="js/enhance.js?v=17"></script>
+<script src="js/data.js?v=18"></script>
+<script src="js/app.js?v=18"></script>
+<script src="js/enhance.js?v=18"></script>
 </body>
 </html>

@@ -3,15 +3,15 @@
    si hay internet siempre se sirve la versión más nueva del servidor y la
    caché queda solo como respaldo offline. Así cada actualización del sitio
    se refleja de inmediato, sin tener que recargar dos veces. */
-const CACHE_NAME = "movilidad360-shell-v17";
+const CACHE_NAME = "movilidad360-shell-v18";
 const SHELL_FILES = [
   "./",
   "./index.html",
-  "./css/styles.css?v=17",
-  "./js/data.js?v=17",
-  "./js/app.js?v=17",
-  "./js/enhance.js?v=17",
-  "./js/ga.js?v=17",
+  "./css/styles.css?v=18",
+  "./js/data.js?v=18",
+  "./js/app.js?v=18",
+  "./js/enhance.js?v=18",
+  "./js/ga.js?v=18",
 ];
 
 self.addEventListener("install", (event) => {

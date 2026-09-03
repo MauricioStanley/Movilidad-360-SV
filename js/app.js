@@ -357,6 +357,7 @@
         <span class="switch-label">¿Llevas mascota?</span>
         <button type="button" class="switch" id="pets-${prefix}" aria-pressed="false" aria-label="¿Llevas mascota?"></button>
       </div>
+      <p class="pets-fee-warning" id="pets-fee-warning-${prefix}" hidden>Llevar mascota tiene un recargo de +${formatMoney(CONFIG.petFee)}.</p>
     `;
     panel.insertBefore(row, quoteBox);
 
@@ -372,10 +373,12 @@
     });
 
     const petsBtn = $(`#pets-${prefix}`, row);
+    const petsWarning = $(`#pets-fee-warning-${prefix}`, row);
     petsBtn.addEventListener("click", () => {
       petsBtn.classList.toggle("on");
       paxPetsState[prefix].pets = petsBtn.classList.contains("on");
       petsBtn.setAttribute("aria-pressed", String(paxPetsState[prefix].pets));
+      if (petsWarning) petsWarning.hidden = !paxPetsState[prefix].pets;
       persistAll();
       // La mascota suma un recargo fijo al precio: si ya hay una cotización
       // mostrada para esta parada, se recalcula al toque.
@@ -410,6 +413,8 @@
       petsBtn.classList.toggle("on", pets);
       petsBtn.setAttribute("aria-pressed", String(pets));
     }
+    const petsWarning = $(`#pets-fee-warning-${prefix}`);
+    if (petsWarning) petsWarning.hidden = !pets;
   }
 
   /* ---------------- Cotización genérica ---------------- */
@@ -446,18 +451,18 @@
     const routeData = quoteRouteData[prefix];
     const wazeToDest = routeData && routeData.destLatLng ? wazeLink(routeData.destLatLng[0], routeData.destLatLng[1]) : null;
     return (
-      `Hola *MOVILIDAD 360 SV* 👋\n\n` +
+      `Hola *MOVILIDAD 360 SV*\n\n` +
       `Quiero cotizar un *${SERVICE_NAMES[prefix]}*:\n` +
-      `📍 Desde: ${originName}\n` +
-      (wazeToPickup ? `🧭 Ruta en Waze hacia mí (recogida): ${wazeToPickup}\n` : "") +
-      `🎯 Hasta: ${destName}\n` +
-      (wazeToDest ? `🧭 Ruta en Waze de la recogida al destino: ${wazeToDest}\n` : "") +
-      `📏 Distancia ${real ? "real por carretera" : "aproximada"}: ${distanceKm.toFixed(1)} km\n` +
-      `💵 Precio estimado: ${formatMoney(price)}\n` +
+      `*Desde:* ${originName}\n` +
+      (wazeToPickup ? `Ruta en Waze hacia mí (recogida): ${wazeToPickup}\n` : "") +
+      `*Hasta:* ${destName}\n` +
+      (wazeToDest ? `Ruta en Waze de la recogida al destino: ${wazeToDest}\n` : "") +
+      `*Distancia* ${real ? "real por carretera" : "aproximada"}: ${distanceKm.toFixed(1)} km\n` +
+      `*Precio estimado:* ${formatMoney(price)}\n` +
       `⏱️ Tiempo estimado: ${formatEta(minutes)}\n` +
-      `👥 Pasajeros: ${passengers}\n` +
-      `🐾 Mascota: ${pets ? `Sí (+${formatMoney(CONFIG.petFee)})` : "No"}\n` +
-      `💳 Método de pago: ${paymentMethod}` +
+      `*Pasajeros:* ${passengers}\n` +
+      `*Mascota:* ${pets ? `Sí (+${formatMoney(CONFIG.petFee)})` : "No"}\n` +
+      `*Método de pago:* ${paymentMethod}` +
       (extraLine ? `\n${extraLine}` : "") +
       `\n⚠️ ${cancellationLine(price)}` +
       `\n\n¿Podrían confirmar disponibilidad?`
@@ -755,19 +760,19 @@
             { label: "Precio estimado", value: formatMoney(price) },
           ],
           buildMessage: (paymentMethod) =>
-            `Hola *MOVILIDAD 360 SV* 👋\n\n` +
+            `Hola *MOVILIDAD 360 SV*\n\n` +
             `Quiero cotizar el envío de una *encomienda*:\n` +
-            `📦 Tamaño: ${parcelSizeLabels[parcelState.size]}\n` +
-            `🚀 Urgencia: ${parcelState.urgent ? "Mismo día (express)" : "Estándar"}\n` +
+            `*Tamaño:* ${parcelSizeLabels[parcelState.size]}\n` +
+            `*Urgencia:* ${parcelState.urgent ? "Mismo día (express)" : "Estándar"}\n` +
             `⚠️ Frágil: ${parcelState.fragile ? "Sí" : "No"}\n` +
-            `📍 Recolección: ${from}\n` +
-            (pointWazeLink(parcelState.fromPoint) ? `🧭 Ruta en Waze hacia la recolección: ${pointWazeLink(parcelState.fromPoint)}\n` : "") +
-            `🎯 Entrega: ${to}` +
-            (pointWazeLink(parcelState.toPoint) ? `\n🧭 Ruta en Waze de la recolección a la entrega: ${pointWazeLink(parcelState.toPoint)}` : "") +
-            (distanceKm !== null ? `\n📏 Distancia ${real ? "real por carretera" : "aproximada"}: ${distanceKm.toFixed(1)} km` : "") +
-            (notes ? `\n📝 Instrucciones: ${notes}` : "") +
-            `\n💵 Precio estimado: ${formatMoney(price)}\n` +
-            `💳 Método de pago: ${paymentMethod}` +
+            `*Recolección:* ${from}\n` +
+            (pointWazeLink(parcelState.fromPoint) ? `Ruta en Waze hacia la recolección: ${pointWazeLink(parcelState.fromPoint)}\n` : "") +
+            `*Entrega:* ${to}` +
+            (pointWazeLink(parcelState.toPoint) ? `\nRuta en Waze de la recolección a la entrega: ${pointWazeLink(parcelState.toPoint)}` : "") +
+            (distanceKm !== null ? `\n*Distancia* ${real ? "real por carretera" : "aproximada"}: ${distanceKm.toFixed(1)} km` : "") +
+            (notes ? `\n*Instrucciones:* ${notes}` : "") +
+            `\n*Precio estimado:* ${formatMoney(price)}\n` +
+            `*Método de pago:* ${paymentMethod}` +
             `\n⚠️ ${cancellationLine(price)}` +
             `\n\n¿Podrían confirmar disponibilidad?`,
         });
@@ -869,15 +874,15 @@
             { label: "Entrega", value: to },
           ],
           buildMessage: (paymentMethod) =>
-            `Hola *MOVILIDAD 360 SV* 👋\n\n` +
+            `Hola *MOVILIDAD 360 SV*\n\n` +
             `Quiero cotizar una *mudanza*:\n` +
-            `🏠 Tamaño: ${mudanzaSizeLabels[mudanzaState.size]}\n` +
-            `📍 Recolección: ${from}\n` +
-            (pointWazeLink(mudanzaState.fromPoint) ? `🧭 Ruta en Waze hacia la recolección: ${pointWazeLink(mudanzaState.fromPoint)}\n` : "") +
-            `🎯 Entrega: ${to}` +
-            (pointWazeLink(mudanzaState.toPoint) ? `\n🧭 Ruta en Waze de la recolección a la entrega: ${pointWazeLink(mudanzaState.toPoint)}` : "") +
-            (notes ? `\n📝 Detalles: ${notes}` : "") +
-            `\n💳 Método de pago preferido: ${paymentMethod}` +
+            `*Tamaño:* ${mudanzaSizeLabels[mudanzaState.size]}\n` +
+            `*Recolección:* ${from}\n` +
+            (pointWazeLink(mudanzaState.fromPoint) ? `Ruta en Waze hacia la recolección: ${pointWazeLink(mudanzaState.fromPoint)}\n` : "") +
+            `*Entrega:* ${to}` +
+            (pointWazeLink(mudanzaState.toPoint) ? `\nRuta en Waze de la recolección a la entrega: ${pointWazeLink(mudanzaState.toPoint)}` : "") +
+            (notes ? `\n*Detalles:* ${notes}` : "") +
+            `\n*Método de pago preferido:* ${paymentMethod}` +
             `\n⚠️ ${cancellationLine(null)}` +
             `\n\n¿Podrían darme una cotización?`,
         });
@@ -972,14 +977,14 @@
             { label: "Precio", value: formatMoney(finalPrice) + (dest.negotiable ? " (negociable)" : "") },
           ],
           buildMessage: (paymentMethod) =>
-            `Hola *MOVILIDAD 360 SV* 👋\n\n` +
+            `Hola *MOVILIDAD 360 SV*\n\n` +
             `Quiero reservar un viaje con *tarifa fija*:\n` +
-            `📍 Desde: ${FIXED_ROUTES.origin}\n` +
-            `🎯 Hasta: ${dest.name}\n` +
-            `💵 Precio: ${formatMoney(finalPrice)}${dest.negotiable ? " (negociable, a confirmar)" : ""}\n` +
-            `👥 Pasajeros: ${passengers}\n` +
-            `🐾 Mascota: ${pets ? `Sí (+${formatMoney(CONFIG.petFee)})` : "No"}\n` +
-            `💳 Método de pago: ${paymentMethod}` +
+            `*Desde:* ${FIXED_ROUTES.origin}\n` +
+            `*Hasta:* ${dest.name}\n` +
+            `*Precio:* ${formatMoney(finalPrice)}${dest.negotiable ? " (negociable, a confirmar)" : ""}\n` +
+            `*Pasajeros:* ${passengers}\n` +
+            `*Mascota:* ${pets ? `Sí (+${formatMoney(CONFIG.petFee)})` : "No"}\n` +
+            `*Método de pago:* ${paymentMethod}` +
             `\n⚠️ ${cancellationLine(finalPrice)}` +
             `\n\n¿Podrían confirmar disponibilidad?`,
         });
@@ -1531,6 +1536,7 @@
     $("#confirmRecipientPhone").value = "";
     $("#confirmNegotiatePanel").hidden = true;
     $("#confirmNegotiatePrice").value = "";
+    $("#confirmNegotiateToggle").classList.remove("is-active");
 
     const frequentNote = $("#confirmFrequentNote");
     if (frequentNote) frequentNote.hidden = getFrequentCount() < FREQUENT_THRESHOLD;
@@ -1557,9 +1563,11 @@
       });
     });
 
-    $("#confirmNegotiateToggle").addEventListener("click", () => {
+    $("#confirmNegotiateToggle").addEventListener("click", (e) => {
       const panel = $("#confirmNegotiatePanel");
       panel.hidden = !panel.hidden;
+      e.currentTarget.classList.toggle("is-active", !panel.hidden);
+      if (!panel.hidden) panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
 
     $("#confirmSendBtn").addEventListener("click", () => {
@@ -1569,21 +1577,21 @@
       if (confirmRecipient === "other") {
         const name = $("#confirmRecipientName").value.trim();
         const phone = $("#confirmRecipientPhone").value.trim();
-        msg += `\n\n👤 Este viaje es para: ${name || "(el cliente indicará el nombre por WhatsApp)"}`;
-        if (phone) msg += `\n📱 Teléfono para coordinar con esa persona: ${phone}`;
+        msg += `\n\n*Este viaje es para:* ${name || "(el cliente indicará el nombre por WhatsApp)"}`;
+        if (phone) msg += `\n*Teléfono para coordinar con esa persona:* ${phone}`;
       }
 
       if (confirmPaymentMethod === "Transferencia" && confirmBankChoice) {
-        msg += `\n🏦 Transferencia a: ${confirmBankChoice.bank} — cuenta ${confirmBankChoice.number}`;
+        msg += `\n*Transferencia a:* ${confirmBankChoice.bank} — cuenta ${confirmBankChoice.number}`;
       }
 
       const negotiatePrice = $("#confirmNegotiatePrice").value.trim();
       if (negotiatePrice) {
-        msg += `\n🤝 El cliente propone pagar: ${formatMoney(Number(negotiatePrice))} (precio a negociar, sujeto a tráfico, hora, aire acondicionado y clima).`;
+        msg += `\n*Precio propuesto por el cliente:* ${formatMoney(Number(negotiatePrice))} (a negociar, sujeto a tráfico, hora, aire acondicionado y clima).`;
       }
 
       if (getFrequentCount() >= FREQUENT_THRESHOLD) {
-        msg += `\n🔁 Cliente frecuente (varias solicitudes previas desde este dispositivo) — ¿aplica algún descuento?`;
+        msg += `\n*Cliente frecuente* (varias solicitudes previas desde este dispositivo) — ¿aplica algún descuento?`;
       }
 
       trackEvent("whatsapp_click", { link_id: "confirm-send" });
@@ -1953,7 +1961,7 @@
       const { vehicle, idx } = vehicleModalCtx;
       const unit = (vehicle.units || [])[idx];
       const msg =
-        `Hola *MOVILIDAD 360 SV* 👋\n\n` +
+        `Hola *MOVILIDAD 360 SV*\n\n` +
         `Me interesa reservar un viaje con un vehículo tipo *${vehicle.type}*` +
         (unit ? ` (ej. ${unit.model}).` : `.`) +
         `\n¿Podrían darme más información?`;
@@ -2129,7 +2137,7 @@
      ===================================================================== */
   function wireGenericWaLinks() {
     const genericMsg =
-      `Hola *MOVILIDAD 360 SV* 👋\n\nQuiero cotizar un viaje. ¿Me ayudan, por favor?`;
+      `Hola *MOVILIDAD 360 SV*\n\nQuiero cotizar un viaje. ¿Me ayudan, por favor?`;
     ["header-wa", "hero-wa", "footer-wa", "float-wa", "cta-wa"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.href = waLink(genericMsg);
@@ -2167,26 +2175,26 @@
       errorEl.hidden = true;
 
       const lines = [
-        `Hola *MOVILIDAD 360 SV* 👋`,
+        `Hola *MOVILIDAD 360 SV*`,
         ``,
         `Quiero postularme para trabajar con ustedes. Aquí mi información:`,
         ``,
-        `👤 Nombre completo: ${name}`,
-        `📱 Teléfono/WhatsApp: ${phone}`,
+        `*Nombre completo:* ${name}`,
+        `*Teléfono/WhatsApp:* ${phone}`,
       ];
       const age = val("join-age");
-      if (age) lines.push(`🎂 Edad: ${age}`);
+      if (age) lines.push(`*Edad:* ${age}`);
       const location = val("join-location");
-      if (location) lines.push(`📍 Municipio y departamento: ${location}`);
+      if (location) lines.push(`*Municipio y departamento:* ${location}`);
       const area = val("join-area");
-      if (area) lines.push(`💼 Área de interés: ${area}`);
+      if (area) lines.push(`*Área de interés:* ${area}`);
       const schedule = val("join-schedule");
-      if (schedule) lines.push(`🕐 Horarios disponibles: ${schedule}`);
+      if (schedule) lines.push(`*Horarios disponibles:* ${schedule}`);
       const experience = val("join-experience");
-      if (experience) lines.push(`📋 Experiencia relacionada: ${experience}`);
+      if (experience) lines.push(`*Experiencia relacionada:* ${experience}`);
 
       if (driverToggle.classList.contains("on")) {
-        lines.push(``, `🚗 Aplico como conductor:`);
+        lines.push(``, `*Aplico como conductor:*`);
         const license = val("join-license");
         if (license) lines.push(`Licencia: ${license}`);
         const ownVehicle = val("join-own-vehicle");
