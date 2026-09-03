@@ -31,7 +31,7 @@
 <!-- Google Analytics (GA4). El script de arranque vive en js/ga.js (no
      inline) para que la CSP de arriba no necesite 'unsafe-inline'. -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-F59WF19VVM"></script>
-<script src="js/ga.js?v=16"></script>
+<script src="js/ga.js?v=17"></script>
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -40,7 +40,7 @@
 <meta name="apple-mobile-web-app-title" content="Movilidad 360">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="css/styles.css?v=16">
+<link rel="stylesheet" href="css/styles.css?v=17">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -117,8 +117,14 @@
       <h2 class="section-title">Cinco formas de llegar a donde vas</h2>
       <p class="section-lede">Elige una parada, cuéntanos hacia dónde vas y te enviamos la cotización directo a WhatsApp para confirmar tu reserva. El precio y el tiempo se calculan con la distancia real de la ruta por carretera.</p>
       <div class="geo-banner">
-        <p class="field-hint" id="geo-status" role="status" aria-live="polite">Activa tu ubicación para que el tiempo y el precio de todas las cotizaciones se calculen desde donde estás.</p>
-        <button class="btn btn-outline-ink btn-sm" id="btn-locate">Usar mi ubicación</button>
+        <p class="field-hint" id="geo-status" role="status" aria-live="polite">Elige desde dónde sale tu viaje: usa tu ubicación actual o búscala — no tiene que ser donde estás en este momento.</p>
+        <div class="geo-banner-controls">
+          <button class="btn btn-outline-ink btn-sm" id="btn-locate">📍 Usar mi ubicación</button>
+          <div class="search-field origin-search-field">
+            <input type="text" id="origin-search-input" placeholder="…o busca la dirección de origen" autocomplete="off">
+          </div>
+        </div>
+        <div class="suggestion-list" id="origin-suggestions"></div>
       </div>
     </div>
 
@@ -616,6 +622,15 @@
           </ul>
         </div>
       </div>
+
+      <div class="join-terms">
+        <h4>Condiciones para conductores que ceden viajes</h4>
+        <ul>
+          <li><strong>Inscripción inicial:</strong> $5.00 (pago único al integrarte).</li>
+          <li><strong>Comisión por viaje cedido:</strong> 10% del valor del viaje. Es negociable según el monto — por ejemplo, en viajes grandes (ej. $80) el porcentaje puede ajustarse.</li>
+        </ul>
+      </div>
+
       <form class="join-form" id="join-form" novalidate>
         <h3 class="join-subtitle">Completa tu solicitud</h3>
         <div class="form-grid two-col">
@@ -821,10 +836,37 @@
     <div class="confirm-modal-body">
       <div id="confirmRows" class="confirm-rows"></div>
 
+      <div class="confirm-recipient">
+        <span class="field-label">¿El viaje es para ti o para alguien más?</span>
+        <div class="pill-toggle" id="confirmRecipientPills" role="group" aria-label="¿Para quién es el viaje?">
+          <button type="button" class="pill-option selected" data-recipient="self" aria-pressed="true">Para mí</button>
+          <button type="button" class="pill-option" data-recipient="other" aria-pressed="false">Para alguien más</button>
+        </div>
+        <div class="confirm-recipient-fields" id="confirmRecipientFields" hidden>
+          <label class="field-label" for="confirmRecipientName">Nombre de la persona</label>
+          <input type="text" id="confirmRecipientName" class="field-input" placeholder="Ej. Papá — Juan Pérez" autocomplete="off">
+          <label class="field-label" for="confirmRecipientPhone">Teléfono para coordinar con esa persona</label>
+          <input type="tel" id="confirmRecipientPhone" class="field-input" placeholder="Ej. 7000-0000" autocomplete="off">
+        </div>
+      </div>
+
       <div class="confirm-payment">
         <span class="field-label" id="confirm-payment-label">Método de pago</span>
         <div class="pill-toggle" id="confirmPaymentPills" role="group" aria-labelledby="confirm-payment-label"></div>
       </div>
+
+      <div class="confirm-bank-accounts" id="confirmBankAccounts" hidden></div>
+
+      <div class="confirm-negotiate">
+        <button type="button" class="btn btn-outline-ink btn-sm" id="confirmNegotiateToggle">¿Deseas negociar tu viaje?</button>
+        <div class="confirm-negotiate-panel" id="confirmNegotiatePanel" hidden>
+          <p class="confirm-negotiate-note">El precio mostrado es un estimado y se puede negociar hasta cierto punto: se toman en cuenta el tráfico, la hora del viaje, si el vehículo lleva aire acondicionado, el clima, entre otros factores. Escribe cuánto te gustaría pagar y lo revisamos contigo por WhatsApp.</p>
+          <label class="field-label" for="confirmNegotiatePrice">¿Cuánto te gustaría pagar? (USD)</label>
+          <input type="number" min="0" step="0.5" inputmode="decimal" id="confirmNegotiatePrice" class="field-input" placeholder="Ej. 5.00">
+        </div>
+      </div>
+
+      <p class="confirm-frequent-note" id="confirmFrequentNote" hidden>🎉 Ya has cotizado varias veces con nosotros desde este dispositivo — coméntanoslo por WhatsApp, como cliente frecuente podemos ofrecerte un mejor precio.</p>
 
       <p class="confirm-cancellation" id="confirmCancellation"></p>
       <p class="confirm-insurance">🛡️ Tu viaje incluye nuestro compromiso: lo finalizamos sin importar las condiciones.</p>
@@ -856,8 +898,8 @@
   </div>
 </div>
 
-<script src="js/data.js?v=16"></script>
-<script src="js/app.js?v=16"></script>
-<script src="js/enhance.js?v=16"></script>
+<script src="js/data.js?v=17"></script>
+<script src="js/app.js?v=17"></script>
+<script src="js/enhance.js?v=17"></script>
 </body>
 </html>

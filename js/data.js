@@ -17,7 +17,16 @@ const CONFIG = {
   originFallback: { name: "San Salvador (Centro)", lat: 13.6989, lng: -89.1914 },
   // Tarifa única: precio estimado = distancia real de la ruta (km) x ratePerKm.
   // Es un estimado; el precio final se confirma por WhatsApp.
-  ratePerKm: 0.55,
+  ratePerKm: 0.45,
+  // Recargo fijo por llevar mascota (se suma al precio estimado, no reemplaza
+  // el cálculo por distancia).
+  petFee: 1.99,
+  // Cuentas bancarias para pago por transferencia. El cliente elige una al
+  // confirmar su reserva y puede copiar el número con un botón.
+  bankAccounts: [
+    { bank: "BAC", number: "115299620" },
+    { bank: "Cuenta Agrícola", number: "3114600438" },
+  ],
   // ⚠️ REEMPLAZAR con el número real de viajes completados.
   tripsCompleted: 500,
   responseMinutes: 5,
@@ -347,7 +356,19 @@ const FAQS = [
   },
   {
     q: "¿Puedo pedir un viaje para varios pasajeros o con mascota?",
-    a: "Sí. Al cotizar, indica el número de pasajeros y si llevas mascota — esa información se incluye automáticamente en tu mensaje de WhatsApp para que el equipo prepare el vehículo adecuado.",
+    a: `Sí. Al cotizar, indica el número de pasajeros y si llevas mascota — esa información se incluye automáticamente en tu mensaje de WhatsApp para que el equipo prepare el vehículo adecuado. Llevar mascota tiene un recargo fijo de $${CONFIG.petFee.toFixed(2)}.`,
+  },
+  {
+    q: "¿Puedo pedir un viaje para otra persona (no para mí)?",
+    a: "Sí. Al confirmar tu reserva, elige la opción \"Para alguien más\" e indica el nombre y el teléfono de esa persona — así el equipo puede coordinar directamente con quien va a viajar.",
+  },
+  {
+    q: "¿El precio se puede negociar?",
+    a: "Sí, hasta cierto punto. El precio mostrado es un estimado calculado por distancia; el precio final puede variar según el tráfico, la hora del viaje, si el vehículo lleva aire acondicionado, el clima y otros factores. Al confirmar tu reserva puedes tocar \"¿Deseas negociar tu viaje?\" e indicar cuánto te gustaría pagar — lo revisamos contigo por WhatsApp antes de confirmar.",
+  },
+  {
+    q: "Ya he viajado varias veces con ustedes, ¿tengo algún beneficio?",
+    a: "Sí. Si ya has viajado con nosotros antes, dínoslo por WhatsApp al cotizar — como cliente frecuente podemos ofrecerte un mejor precio.",
   },
   {
     q: "¿Hacen mudanzas?",
