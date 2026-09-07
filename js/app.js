@@ -78,24 +78,25 @@
     return Math.max(5, Math.round((distanceKm / speed) * 60) + 6);
   }
 
-  function estimatePrice(distanceKm, pets, rate) {
-    return distanceKm * rate + (pets ? CONFIG.petFee : 0);
+  // Tarifa progresiva por tramos (estilo inDrive): a cada kilómetro se le
+  // cobra la tarifa del tramo en el que cae, no la tarifa del tramo final
+  // a toda la distancia — igual que una tabla de impuestos por escalones.
+  function tieredDistancePrice(distanceKm) {
+    let remaining = distanceKm;
+    let total = 0;
+    let lowerBound = 0;
+    for (const tier of CONFIG.distanceTiers) {
+      if (remaining <= 0) break;
+      const kmInTier = Math.min(remaining, tier.upTo - lowerBound);
+      total += kmInTier * tier.rate;
+      remaining -= kmInTier;
+      lowerBound = tier.upTo;
+    }
+    return total;
   }
 
-  // Determina si un destino cae dentro de "San Salvador" (la zona de
-  // tarifa alta) o fuera (tarifa baja). Usa el campo "dept" cuando el
-  // lugar lo trae (departamentos y sitios turísticos curados, aeropuertos);
-  // si no lo trae (ej. una dirección buscada libremente), se calcula por
-  // cercanía al centro de San Salvador — cubre en la práctica la misma
-  // área metropolitana que ya usamos como "viajes locales".
-  const SAN_SALVADOR_LOCAL_RADIUS_KM = 15;
-  function isSanSalvadorZone(place) {
-    if (place && place.dept) return place.dept === "San Salvador";
-    if (!place) return true;
-    return haversineKm(CONFIG.originFallback.lat, CONFIG.originFallback.lng, place.lat, place.lng) <= SAN_SALVADOR_LOCAL_RADIUS_KM;
-  }
-  function rateFor(place) {
-    return isSanSalvadorZone(place) ? CONFIG.rateSanSalvador : CONFIG.rateOutsideSanSalvador;
+  function estimatePrice(distanceKm, pets) {
+    return tieredDistancePrice(distanceKm) + (pets ? CONFIG.petFee : 0);
   }
 
   function formatMoney(n) {
@@ -630,9 +631,7 @@
       coords: route.coords,
       real: route.real,
     };
-    // "Movilizarte" es siempre viaje local (Todo San Salvador), sin importar
-    // qué tan lejos escriba el cliente el destino.
-    const price = estimatePrice(route.distanceKm, paxPetsFor("movilizarte").pets, CONFIG.rateSanSalvador);
+    const price = estimatePrice(route.distanceKm, paxPetsFor("movilizarte").pets);
     showQuote("movilizarte", {
       originName,
       destName: place.name,
@@ -664,7 +663,7 @@
           </div>
           <span class="option-desc">${a.short} · ${a.type}</span>
           <div class="option-foot">
-            <span class="price">desde ${formatMoney(estimatePrice(a.distanceKm, false, rateFor(a)))}</span>
+            <span class="price">desde ${formatMoney(estimatePrice(a.distanceKm, false))}</span>
             <span class="eta">${formatEta(estimateMinutes(a.distanceKm))}</span>
           </div>
         </button>`;
@@ -694,7 +693,7 @@
       coords: route.coords,
       real: route.real,
     };
-    const price = estimatePrice(route.distanceKm, paxPetsFor("aeropuerto").pets, rateFor(airport));
+    const price = estimatePrice(route.distanceKm, paxPetsFor("aeropuerto").pets);
     showQuote("aeropuerto", {
       originName,
       destName: airport.name,
@@ -730,7 +729,7 @@
       const route = await fetchRoute(parcelState.fromPoint, parcelState.toPoint);
       distanceKm = route.distanceKm;
       real = route.real;
-      price += estimatePrice(distanceKm, false, CONFIG.ratePerKmParcel);
+      price += distanceKm * CONFIG.ratePerKmParcel;
       quoteRouteData.encomienda = {
         originLatLng: [parcelState.fromPoint.lat, parcelState.fromPoint.lng],
         destLatLng: [parcelState.toPoint.lat, parcelState.toPoint.lng],
@@ -1080,7 +1079,7 @@
           </div>
           <span class="option-desc">${d.tag}</span>
           <div class="option-foot">
-            <span class="price">desde ${formatMoney(estimatePrice(distanceKm, false, rateFor({ dept: d.name })))}</span>
+            <span class="price">desde ${formatMoney(estimatePrice(distanceKm, false))}</span>
             <span class="eta">${formatEta(estimateMinutes(distanceKm))}</span>
           </div>
         </button>`;
@@ -1110,7 +1109,7 @@
       coords: route.coords,
       real: route.real,
     };
-    const price = estimatePrice(route.distanceKm, paxPetsFor("departamento").pets, rateFor({ dept: dept.name }));
+    const price = estimatePrice(route.distanceKm, paxPetsFor("departamento").pets);
     showQuote("departamento", {
       originName,
       destName,
@@ -1182,7 +1181,7 @@
           </div>
           <span class="option-desc">${p.desc}</span>
           <div class="option-foot">
-            <span class="price">desde ${formatMoney(estimatePrice(distanceKm, false, rateFor(p)))}</span>
+            <span class="price">desde ${formatMoney(estimatePrice(distanceKm, false))}</span>
             <span class="eta">${formatEta(estimateMinutes(distanceKm))}</span>
           </div>
         </button>`;
@@ -1229,7 +1228,7 @@
             </div>
             <span class="option-desc">📍 ${escapeHtml(p.fullName)}</span>
             <div class="option-foot">
-              <span class="price">desde ${formatMoney(estimatePrice(distanceKm, false, rateFor(p)))}</span>
+              <span class="price">desde ${formatMoney(estimatePrice(distanceKm, false))}</span>
               <span class="eta">${formatEta(estimateMinutes(distanceKm))}</span>
             </div>
           </button>`;
@@ -1261,7 +1260,7 @@
       coords: route.coords,
       real: route.real,
     };
-    const price = estimatePrice(route.distanceKm, paxPetsFor("turismo").pets, rateFor(place));
+    const price = estimatePrice(route.distanceKm, paxPetsFor("turismo").pets);
     showQuote("turismo", {
       originName,
       destName: place.name,
@@ -1307,7 +1306,6 @@
 
     let totalKm = 0;
     let totalMinutes = 0;
-    let totalDistancePrice = 0;
     let allReal = true;
     let coordsAll = [];
     let legOrigin = origin;
@@ -1315,10 +1313,6 @@
       const leg = await fetchRoute(legOrigin, stop);
       totalKm += leg.distanceKm;
       totalMinutes += leg.minutes;
-      // Cada tramo puede caer en una zona distinta (ej. San Salvador ->
-      // Santa Ana -> Ahuachapán), así que se cobra cada tramo con la
-      // tarifa que le corresponde a su propia parada de llegada.
-      totalDistancePrice += leg.distanceKm * rateFor(stop);
       if (!leg.real) allReal = false;
       if (leg.coords) coordsAll = coordsAll.concat(leg.coords);
       legOrigin = stop;
@@ -1331,7 +1325,11 @@
       coords: coordsAll.length ? coordsAll : null,
       real: allReal,
     };
-    const price = totalDistancePrice + (paxPetsFor("turismo").pets ? CONFIG.petFee : 0);
+    // La tarifa por tramos se aplica UNA sola vez a la distancia total del
+    // recorrido completo (no a cada tramo por separado), igual que un solo
+    // viaje largo — así el km 20 del recorrido paga la tarifa del km 20,
+    // sin importar en qué parada específica ocurrió.
+    const price = estimatePrice(totalKm, paxPetsFor("turismo").pets);
     showQuote("turismo", {
       originName,
       destName: destLabel,
