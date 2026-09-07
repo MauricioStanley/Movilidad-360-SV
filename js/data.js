@@ -15,9 +15,16 @@ const CONFIG = {
   // Punto de referencia por defecto: Plaza Las Américas (El Salvador del Mundo),
   // usado como origen cuando el usuario no comparte su ubicación.
   originFallback: { name: "San Salvador (Centro)", lat: 13.6989, lng: -89.1914 },
-  // Tarifa única: precio estimado = distancia real de la ruta (km) x ratePerKm.
-  // Es un estimado; el precio final se confirma por WhatsApp.
-  ratePerKm: 0.45,
+  // Tarifa de viajes de pasajeros: cambia según la zona del viaje.
+  // Dentro de San Salvador (área metropolitana) cuesta más por km porque
+  // el tráfico hace que cada kilómetro tome mucho más tiempo; fuera de
+  // San Salvador (carretera, menos tráfico) cuesta menos por km.
+  // Precio estimado = distancia real de la ruta (km) x la tarifa que
+  // corresponda. Es un estimado; el precio final se confirma por WhatsApp.
+  rateSanSalvador: 1.5,
+  rateOutsideSanSalvador: 0.85,
+  // Tarifa de encomiendas (paquetes) por km — no cambia según la zona.
+  ratePerKmParcel: 0.45,
   // Recargo fijo por llevar mascota (se suma al precio estimado, no reemplaza
   // el cálculo por distancia).
   petFee: 1.99,
@@ -61,6 +68,7 @@ const AIRPORTS = [
     short: "San Óscar A. Romero y Galdámez",
     lat: 13.4409, lng: -89.0557,
     type: "Internacional",
+    dept: "La Paz", // fuera de San Salvador
   },
   {
     id: "ilopango",
@@ -68,6 +76,7 @@ const AIRPORTS = [
     short: "Vuelos nacionales y chárter",
     lat: 13.6997, lng: -89.1197,
     type: "Nacional / chárter",
+    dept: "San Salvador",
   },
 ];
 
@@ -336,7 +345,7 @@ const TOURIST_ROUTES = [
 const FAQS = [
   {
     q: "¿Cómo se calcula el precio de mi viaje?",
-    a: `El precio se calcula como distancia real de la ruta por carretera × $${CONFIG.ratePerKm}/km. Siempre es un estimado: el precio final se confirma por WhatsApp antes de tu viaje.`,
+    a: `El precio se calcula según la distancia real de la ruta por carretera. Dentro de San Salvador (área metropolitana) la tarifa es $${CONFIG.rateSanSalvador.toFixed(2)}/km; fuera de San Salvador es $${CONFIG.rateOutsideSanSalvador.toFixed(2)}/km. Siempre es un estimado: el precio final se confirma por WhatsApp antes de tu viaje.`,
   },
   {
     q: "¿Qué métodos de pago aceptan?",
