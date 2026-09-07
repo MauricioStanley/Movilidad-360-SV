@@ -15,15 +15,21 @@ const CONFIG = {
   // Punto de referencia por defecto: Plaza Las Américas (El Salvador del Mundo),
   // usado como origen cuando el usuario no comparte su ubicación.
   originFallback: { name: "San Salvador (Centro)", lat: 13.6989, lng: -89.1914 },
-  // Tarifa de viajes de pasajeros: cambia según la zona del viaje.
-  // Dentro de San Salvador (área metropolitana) cuesta más por km porque
-  // el tráfico hace que cada kilómetro tome mucho más tiempo; fuera de
-  // San Salvador (carretera, menos tráfico) cuesta menos por km.
-  // Precio estimado = distancia real de la ruta (km) x la tarifa que
-  // corresponda. Es un estimado; el precio final se confirma por WhatsApp.
-  rateSanSalvador: 1.5,
-  rateOutsideSanSalvador: 0.85,
-  // Tarifa de encomiendas (paquetes) por km — no cambia según la zona.
+  // Tarifa progresiva por tramos (estilo inDrive), igual para cualquier
+  // viaje de pasajeros sin importar la zona: cada tramo de distancia
+  // tiene su propia tarifa por km, y solo se cobra esa tarifa a los km
+  // que caen dentro de ese tramo (como una tabla de impuestos por
+  // escalones). "upTo" es el km acumulado donde termina el tramo;
+  // el último tramo (Infinity) no tiene límite superior.
+  // Es un estimado; el precio final se confirma por WhatsApp.
+  distanceTiers: [
+    { upTo: 5, rate: 1.0 },        // primeros 5 km
+    { upTo: 15, rate: 0.85 },      // km 6–15
+    { upTo: 30, rate: 0.75 },      // km 16–30
+    { upTo: 50, rate: 0.65 },      // km 31–50
+    { upTo: Infinity, rate: 0.55 }, // km 51 en adelante
+  ],
+  // Tarifa de encomiendas (paquetes) por km — tabla plana, no por tramos.
   ratePerKmParcel: 0.45,
   // Recargo fijo por llevar mascota (se suma al precio estimado, no reemplaza
   // el cálculo por distancia).
@@ -345,7 +351,14 @@ const TOURIST_ROUTES = [
 const FAQS = [
   {
     q: "¿Cómo se calcula el precio de mi viaje?",
-    a: `El precio se calcula según la distancia real de la ruta por carretera. Dentro de San Salvador (área metropolitana) la tarifa es $${CONFIG.rateSanSalvador.toFixed(2)}/km; fuera de San Salvador es $${CONFIG.rateOutsideSanSalvador.toFixed(2)}/km. Siempre es un estimado: el precio final se confirma por WhatsApp antes de tu viaje.`,
+    a: (() => {
+      const lines = CONFIG.distanceTiers.map((tier, i) => {
+        const from = i === 0 ? 1 : CONFIG.distanceTiers[i - 1].upTo + 1;
+        const range = tier.upTo === Infinity ? `Desde el km ${from}` : `Km ${from}–${tier.upTo}`;
+        return `${range}: $${tier.rate.toFixed(2)}/km`;
+      });
+      return `El precio se calcula según la distancia real de la ruta por carretera, con una tarifa que baja por tramos entre más largo es el viaje: ${lines.join(" · ")}. Siempre es un estimado: el precio final se confirma por WhatsApp antes de tu viaje.`;
+    })(),
   },
   {
     q: "¿Qué métodos de pago aceptan?",
