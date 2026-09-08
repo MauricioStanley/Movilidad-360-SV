@@ -1010,6 +1010,40 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
   margin-top: 0.7rem;
 }
 
+/* ---------- Galería de la flota ---------- */
+.gallery-section { background: var(--blue-950); }
+.gallery-grid {
+  display: grid;
+  gap: 1.2rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  margin-top: 1.5rem;
+}
+.gallery-item {
+  margin: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border-softer);
+  background: var(--blue-800);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.25s cubic-bezier(.22,.7,.2,1), box-shadow 0.25s ease;
+}
+.gallery-item:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+.gallery-item img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  transition: transform 0.5s cubic-bezier(.22,.7,.2,1);
+}
+.gallery-item:hover img { transform: scale(1.06); }
+.gallery-item figcaption {
+  padding: 0.85rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--paper);
+  border-top: 1px solid var(--border-softer);
+}
+
 /* ---------- Sobre nosotros ---------- */
 .about-section { background: var(--blue-950); }
 .about-grid {

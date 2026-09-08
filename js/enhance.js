@@ -75,7 +75,7 @@
 
   /* ---- Rejillas con entrada escalonada (flota + guías) ---- */
   function wireGridReveals() {
-    var grids = document.querySelectorAll(".vehicles-grid, .guides-grid, .drivers-grid, .join-roles, .join-requirements");
+    var grids = document.querySelectorAll(".vehicles-grid, .guides-grid, .drivers-grid, .join-roles, .join-requirements, .gallery-grid");
     if (!grids.length || !("IntersectionObserver" in window)) return;
 
     var obs = new IntersectionObserver(
