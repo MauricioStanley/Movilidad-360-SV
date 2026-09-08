@@ -643,6 +643,26 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
 .cta-final h2 { font-family: var(--font-display); font-style: italic; font-weight: 500; font-size: clamp(1.5rem, 4vw, 2.3rem); max-width: 20ch; line-height: 1.2; }
 .cta-final .section-lede { text-align: center; }
 
+/* ---------- CTA de CodyWork (contacto para pedir tu propia web/app) ----------
+   Deliberadamente más discreta que .cta-final (borde punteado, sin glow):
+   es una nota aparte del sitio de Movilidad 360 SV, no parte de su marca. */
+.devcta-section { padding-top: 0; }
+.devcta-card {
+  margin-inline: auto;
+  padding: clamp(1.8rem, 4vw, 2.6rem) clamp(1.4rem, 5vw, 2.4rem);
+  border-radius: clamp(18px, 3vw, 26px);
+  width: min(880px, 100%);
+  background: var(--blue-900);
+  border: 1.5px dashed var(--border-soft);
+  text-align: center;
+  display: grid;
+  gap: 0.9rem;
+  justify-items: center;
+}
+.devcta-card h2 { font-family: var(--font-display); font-weight: 600; font-size: clamp(1.2rem, 3vw, 1.6rem); color: var(--paper); max-width: 30ch; line-height: 1.3; }
+.devcta-actions { display: flex; flex-wrap: wrap; gap: 0.8rem; justify-content: center; margin-top: 0.3rem; }
+.devcta-actions .btn-outline-ink { display: inline-flex; align-items: center; gap: 0.5rem; }
+
 /* ---------- Footer ---------- */
 .site-footer { background: var(--blue-950); color: var(--paper-dim); margin-top: clamp(3rem, 6vw, 5rem); padding-block: clamp(2.5rem, 5vw, 3.5rem) 1.6rem; border-top: 1px solid var(--border-softer); }
 .footer-grid { display: grid; gap: 2.2rem; grid-template-columns: 1.3fr 1fr 1fr 1fr; }
