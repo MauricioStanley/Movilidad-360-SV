@@ -9,44 +9,17 @@
 <meta name="robots" content="noindex, follow">
 <link rel="canonical" href="https://movilidad360sv.com/">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<!-- Seguridad: misma Content-Security-Policy que index.html (ver ahí el
+     detalle de por qué cada dominio está permitido). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.googletagmanager.com https://unpkg.com; style-src 'self' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' https://router.project-osrm.org https://nominatim.openstreetmap.org https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="css/styles.css?v=24">
+<link rel="stylesheet" href="css/styles.css?v=25">
+<link rel="stylesheet" href="css/pages.css?v=25">
 <!-- Google Analytics (GA4): útil para saber qué enlaces rotos está pisando la gente. -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-F59WF19VVM"></script>
-<script src="js/ga.js?v=24"></script>
-<style>
-  .error-wrap {
-    width: min(640px, 92vw);
-    margin: 0 auto;
-    padding-block: clamp(4rem, 10vw, 7rem);
-    text-align: center;
-  }
-  .error-code {
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: clamp(4rem, 14vw, 7rem);
-    line-height: 1;
-    color: var(--green-300);
-    margin: 0;
-  }
-  .error-title {
-    font-family: var(--font-display);
-    font-weight: 600;
-    font-size: clamp(1.4rem, 3.5vw, 1.9rem);
-    margin: 0.8rem 0 0.6rem;
-  }
-  .error-sub { color: var(--paper-dim); line-height: 1.6; margin: 0 0 2.2rem; }
-  .error-actions { display: flex; flex-wrap: wrap; gap: 0.9rem; justify-content: center; }
-  .error-links {
-    margin-top: 3rem;
-    padding-top: 2rem;
-    border-top: 1px solid var(--border-softer);
-    display: flex; flex-wrap: wrap; gap: 0.6rem 1.4rem; justify-content: center;
-  }
-  .error-links a { color: var(--paper-dim); font-size: 0.88rem; text-decoration: none; }
-  .error-links a:hover { color: var(--green-300); text-decoration: underline; }
-</style>
+<script src="js/ga.js?v=25"></script>
 </head>
 <body>
 <header class="site-header">
@@ -82,6 +55,6 @@
     <span>© <span id="year"></span> Movilidad 360 SV — Todos los derechos reservados.</span>
   </div>
 </footer>
-<script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+<script src="js/year.js?v=25"></script>
 </body>
 </html>

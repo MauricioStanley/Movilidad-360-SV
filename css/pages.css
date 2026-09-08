@@ -1,0 +1,46 @@
+/* Estilos específicos de páginas secundarias (privacy.html, 404.html).
+   Viven en su propio archivo, en vez de un <style> inline en cada página,
+   para que ambas puedan usar la misma Content-Security-Policy que la
+   portada sin necesitar "unsafe-inline" en style-src. */
+
+/* ---------- Aviso de privacidad ---------- */
+.legal-wrap { width: min(760px, 92vw); margin: 0 auto; padding-block: clamp(3rem, 6vw, 5rem); }
+.legal-wrap h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(1.8rem, 4vw, 2.6rem); margin-bottom: 1.5rem; }
+.legal-wrap h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.25rem; margin-top: 2.2rem; margin-bottom: 0.7rem; color: var(--green-300); }
+.legal-wrap p, .legal-wrap li { color: var(--paper-dim); line-height: 1.7; font-size: 0.95rem; }
+.legal-wrap ul { list-style: disc; padding-left: 1.3rem; display: grid; gap: 0.4rem; }
+.legal-wrap .updated { font-family: var(--font-mono); font-size: 0.78rem; color: var(--silver-400); margin-bottom: 2rem; }
+.legal-wrap a.back { display: inline-block; margin-top: 2.5rem; color: var(--green-300); font-weight: 700; text-decoration: none; }
+.legal-wrap a.back:hover { text-decoration: underline; }
+
+/* ---------- Página 404 ---------- */
+.error-wrap {
+  width: min(640px, 92vw);
+  margin: 0 auto;
+  padding-block: clamp(4rem, 10vw, 7rem);
+  text-align: center;
+}
+.error-code {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(4rem, 14vw, 7rem);
+  line-height: 1;
+  color: var(--green-300);
+  margin: 0;
+}
+.error-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1.4rem, 3.5vw, 1.9rem);
+  margin: 0.8rem 0 0.6rem;
+}
+.error-sub { color: var(--paper-dim); line-height: 1.6; margin: 0 0 2.2rem; }
+.error-actions { display: flex; flex-wrap: wrap; gap: 0.9rem; justify-content: center; }
+.error-links {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border-softer);
+  display: flex; flex-wrap: wrap; gap: 0.6rem 1.4rem; justify-content: center;
+}
+.error-links a { color: var(--paper-dim); font-size: 0.88rem; text-decoration: none; }
+.error-links a:hover { color: var(--green-300); text-decoration: underline; }
