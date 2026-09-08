@@ -9,22 +9,17 @@
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://movilidad360sv.com/privacy.html">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%230d1a33'/%3E%3Cpath d='M20 60 L50 30 L80 60' stroke='%23e0993a' stroke-width='8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<!-- Seguridad: misma Content-Security-Policy que index.html (ver ahí el
+     detalle de por qué cada dominio está permitido). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.googletagmanager.com https://unpkg.com; style-src 'self' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' https://router.project-osrm.org https://nominatim.openstreetmap.org https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="css/styles.css?v=24">
+<link rel="stylesheet" href="css/styles.css?v=25">
+<link rel="stylesheet" href="css/pages.css?v=25">
 <!-- Google Analytics (GA4) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-F59WF19VVM"></script>
-<script src="js/ga.js?v=24"></script>
-<style>
-  .legal-wrap { width: min(760px, 92vw); margin: 0 auto; padding-block: clamp(3rem, 6vw, 5rem); }
-  .legal-wrap h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(1.8rem, 4vw, 2.6rem); margin-bottom: 1.5rem; }
-  .legal-wrap h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.25rem; margin-top: 2.2rem; margin-bottom: 0.7rem; color: var(--green-300); }
-  .legal-wrap p, .legal-wrap li { color: var(--paper-dim); line-height: 1.7; font-size: 0.95rem; }
-  .legal-wrap ul { list-style: disc; padding-left: 1.3rem; display: grid; gap: 0.4rem; }
-  .legal-wrap .updated { font-family: var(--font-mono); font-size: 0.78rem; color: var(--silver-400); margin-bottom: 2rem; }
-  .legal-wrap a.back { display: inline-block; margin-top: 2.5rem; color: var(--green-300); font-weight: 700; text-decoration: none; }
-  .legal-wrap a.back:hover { text-decoration: underline; }
-</style>
+<script src="js/ga.js?v=25"></script>
 </head>
 <body>
 <header class="site-header">
@@ -76,6 +71,6 @@
     <span>© <span id="year"></span> Movilidad 360 SV — Todos los derechos reservados.</span>
   </div>
 </footer>
-<script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+<script src="js/year.js?v=25"></script>
 </body>
 </html>

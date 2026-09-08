@@ -48,6 +48,25 @@
     }[c]));
   }
 
+  // Neutraliza caracteres de formato de WhatsApp (*negrita*, _cursiva_,
+  // ~tachado~, `monoespaciado`) y saltos de línea sueltos en texto que NO
+  // escribió el propio cliente, sino que viene de un tercero (nombres de
+  // lugar de Nominatim/OpenStreetMap). Sin esto, un nombre de lugar
+  // manipulado en OSM podría romper el formato del mensaje que le llega al
+  // equipo por WhatsApp, o simular líneas/etiquetas que no existen (ej.
+  // fingir un "*Precio:*" adicional). No se aplica a lo que el cliente
+  // escribe a mano (notas, nombre del destinatario, etc.): ese texto es
+  // suyo y ya lo puede formatear como quiera directo en WhatsApp.
+  function sanitizeWaText(str) {
+    return (str == null ? "" : String(str))
+      .replace(/[\r\n]+/g, " ")
+      .replace(/\*/g, "•")
+      .replace(/_/g, "-")
+      .replace(/~/g, "-")
+      .replace(/`/g, "'")
+      .trim();
+  }
+
   function debounce(fn, wait) {
     let t;
     return function (...args) {
@@ -238,7 +257,7 @@
       const place = a.neighbourhood || a.suburb || a.road || a.village || a.town || a.city_district;
       const city = a.city || a.town || a.municipality;
       const parts = [place, place !== city ? city : null].filter(Boolean);
-      return parts.length ? parts.join(", ") : null;
+      return parts.length ? sanitizeWaText(parts.join(", ")) : null;
     } catch (err) {
       clearTimeout(timeoutId);
       return null;
@@ -260,7 +279,12 @@
       const data = await res.json();
       return data.map((d) => {
         const parts = d.display_name.split(",").map((s) => s.trim());
-        return { name: parts.slice(0, 2).join(", "), fullName: d.display_name, lat: parseFloat(d.lat), lng: parseFloat(d.lon) };
+        return {
+          name: sanitizeWaText(parts.slice(0, 2).join(", ")),
+          fullName: sanitizeWaText(d.display_name),
+          lat: parseFloat(d.lat),
+          lng: parseFloat(d.lon),
+        };
       });
     } catch (err) {
       clearTimeout(timeoutId);
