@@ -87,6 +87,16 @@
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
+  // Factor de corrección de línea recta -> carretera (curvas, cuadras, etc.).
+  // Se usa tanto en el respaldo de fetchRoute() como en los precios "desde"
+  // que se muestran ANTES de calcular la ruta real, para que ambos números
+  // se acerquen entre sí (antes, el "desde" salía sistemáticamente más bajo
+  // que el precio final, porque solo fetchRoute() aplicaba esta corrección).
+  const ROAD_CURVE_FACTOR = 1.35;
+  function estimateRoadKm(straightLineKm) {
+    return straightLineKm * ROAD_CURVE_FACTOR;
+  }
+
   function pickSpeed(distanceKm) {
     return distanceKm <= 18 ? CONFIG.avgSpeedKmh.city : CONFIG.avgSpeedKmh.highway;
   }
@@ -115,7 +125,13 @@
   }
 
   function estimatePrice(distanceKm, pets) {
-    return tieredDistancePrice(distanceKm) + (pets ? CONFIG.petFee : 0);
+    // Tarifa mínima: sin esto, un trayecto muy corto (o un origen y destino
+    // que caigan casi en el mismo punto, ej. el origen por defecto y un
+    // destino con las mismas coordenadas) podía cotizar $0.00 — un precio
+    // real que le llegaba al equipo por WhatsApp. CONFIG.minFareUsd es un
+    // valor de partida razonable; ajústalo si el negocio quiere otro piso.
+    const distancePrice = Math.max(tieredDistancePrice(distanceKm), CONFIG.minFareUsd);
+    return distancePrice + (pets ? CONFIG.petFee : 0);
   }
 
   function formatMoney(n) {
@@ -199,8 +215,8 @@
       return result;
     } catch (err) {
       clearTimeout(timeoutId);
-      // Respaldo: línea recta corregida (+35%, aproxima curvas de carretera)
-      const distanceKm = haversineKm(origin.lat, origin.lng, dest.lat, dest.lng) * 1.35;
+      // Respaldo: línea recta corregida (aproxima curvas de carretera)
+      const distanceKm = estimateRoadKm(haversineKm(origin.lat, origin.lng, dest.lat, dest.lng));
       return {
         distanceKm,
         minutes: estimateMinutes(distanceKm),
@@ -462,6 +478,20 @@
   const quoteRouteData = {}; // por prefijo: { originLatLng, destLatLng, coords, real }
   const lastQuoteResult = {}; // por prefijo: datos de la última cotización mostrada (sin pax/mascota)
 
+  // Evita una condición de carrera: si el cliente elige un destino (ruta
+  // lenta de calcular) y de inmediato elige otro (ruta rápida, en caché),
+  // sin esto la respuesta tardía del primero podía llegar después y
+  // sobrescribir en pantalla la cotización del segundo — mostrando un
+  // precio/ruta que ya no corresponde a lo que el cliente seleccionó.
+  const quoteGeneration = {};
+  function nextQuoteGeneration(prefix) {
+    quoteGeneration[prefix] = (quoteGeneration[prefix] || 0) + 1;
+    return quoteGeneration[prefix];
+  }
+  function isCurrentQuoteGeneration(prefix, gen) {
+    return quoteGeneration[prefix] === gen;
+  }
+
   const SERVICE_NAMES = {
     movilizarte: "viaje local",
     aeropuerto: "traslado al aeropuerto",
@@ -602,7 +632,7 @@
     const token = localGeoToken;
     empty.classList.remove("show");
     list.innerHTML = `<p class="suggestion-loading">Buscando "${escapeHtml(filterText)}"…</p>`;
-    debouncedGeocode(filterText, (results) => {
+    debouncedGeocodeLocal(filterText, (results) => {
       if (token !== localGeoToken) return; // el cliente ya escribió otra cosa
       if (!results.length) {
         list.innerHTML = "";
@@ -635,8 +665,16 @@
   }
 
   // Debounce específico para no saturar el servicio gratuito de
-  // geocodificación mientras el cliente sigue escribiendo.
-  const debouncedGeocode = debounce((query, cb) => {
+  // geocodificación mientras el cliente sigue escribiendo. Una instancia
+  // POR buscador (no compartida): debounce() guarda su temporizador en un
+  // cierre propio, así que si dos buscadores usaran la misma instancia, el
+  // cliente escribiendo casi al mismo tiempo en el de "movilizarte" y en el
+  // de "turismo" cancelaría el temporizador del otro, dejando esa lista
+  // congelada en "Buscando…" para siempre.
+  const debouncedGeocodeLocal = debounce((query, cb) => {
+    geocodeSearch(query + ", El Salvador").then(cb);
+  }, 500);
+  const debouncedGeocodeTourism = debounce((query, cb) => {
     geocodeSearch(query + ", El Salvador").then(cb);
   }, 500);
 
@@ -648,7 +686,9 @@
     const origin = currentOrigin();
     const originName = originLabel();
     showQuoteLoading("movilizarte", originName, place.name);
+    const gen = nextQuoteGeneration("movilizarte");
     const route = await fetchRoute(origin, place);
+    if (!isCurrentQuoteGeneration("movilizarte", gen)) return; // se eligió otro destino mientras tanto
     quoteRouteData.movilizarte = {
       originLatLng: [origin.lat, origin.lng],
       destLatLng: [place.lat, place.lng],
@@ -674,7 +714,9 @@
     const origin = currentOrigin();
     const withDist = AIRPORTS.map((a) => ({
       ...a,
-      distanceKm: haversineKm(origin.lat, origin.lng, a.lat, a.lng),
+      // Corregido con estimateRoadKm() para que el "desde" no salga más
+      // bajo que el precio real de la ruta calculada al seleccionar.
+      distanceKm: estimateRoadKm(haversineKm(origin.lat, origin.lng, a.lat, a.lng)),
     })).sort((a, b) => a.distanceKm - b.distanceKm);
 
     $("#list-aeropuerto").innerHTML = withDist
@@ -710,7 +752,9 @@
     const origin = currentOrigin();
     const originName = originLabel();
     showQuoteLoading("aeropuerto", originName, airport.name);
+    const gen = nextQuoteGeneration("aeropuerto");
     const route = await fetchRoute(origin, airport);
+    if (!isCurrentQuoteGeneration("aeropuerto", gen)) return; // se eligió otro aeropuerto mientras tanto
     quoteRouteData.aeropuerto = {
       originLatLng: [origin.lat, origin.lng],
       destLatLng: [airport.lat, airport.lng],
@@ -1094,7 +1138,7 @@
   function renderDepartments() {
     const origin = currentOrigin();
     $("#list-departamento").innerHTML = DEPARTMENTS.map((d, i) => {
-      const distanceKm = haversineKm(origin.lat, origin.lng, d.lat, d.lng);
+      const distanceKm = estimateRoadKm(haversineKm(origin.lat, origin.lng, d.lat, d.lng));
       return `
         <button type="button" class="option-card" data-idx="${i}">
           <div class="option-card-top">
@@ -1126,7 +1170,9 @@
     const originName = originLabel();
     const destName = `Departamento de ${dept.name}`;
     showQuoteLoading("departamento", originName, destName);
+    const gen = nextQuoteGeneration("departamento");
     const route = await fetchRoute(origin, dept);
+    if (!isCurrentQuoteGeneration("departamento", gen)) return; // se eligió otro departamento mientras tanto
     quoteRouteData.departamento = {
       originLatLng: [origin.lat, origin.lng],
       destLatLng: [dept.lat, dept.lng],
@@ -1196,7 +1242,7 @@
     const origin = currentOrigin();
     grid.innerHTML = filtered
       .map((p, i) => {
-        const distanceKm = haversineKm(origin.lat, origin.lng, p.lat, p.lng);
+        const distanceKm = estimateRoadKm(haversineKm(origin.lat, origin.lng, p.lat, p.lng));
         return `
         <button type="button" class="option-card" data-idx="${i}">
           <div class="option-card-top">
@@ -1234,7 +1280,7 @@
     const token = touristGeoToken;
     empty.classList.remove("show");
     grid.innerHTML = `<p class="suggestion-loading">Buscando "${escapeHtml(query)}"…</p>`;
-    debouncedGeocode(query, (results) => {
+    debouncedGeocodeTourism(query, (results) => {
       if (token !== touristGeoToken) return;
       if (!results.length) {
         grid.innerHTML = "";
@@ -1244,7 +1290,7 @@
       const origin = currentOrigin();
       grid.innerHTML = results
         .map((p, i) => {
-          const distanceKm = haversineKm(origin.lat, origin.lng, p.lat, p.lng);
+          const distanceKm = estimateRoadKm(haversineKm(origin.lat, origin.lng, p.lat, p.lng));
           return `
           <button type="button" class="option-card" data-idx="${i}">
             <div class="option-card-top">
@@ -1277,7 +1323,9 @@
     const origin = currentOrigin();
     const originName = originLabel();
     showQuoteLoading("turismo", originName, place.name);
+    const gen = nextQuoteGeneration("turismo");
     const route = await fetchRoute(origin, place);
+    if (!isCurrentQuoteGeneration("turismo", gen)) return; // se eligió otro destino/ruta mientras tanto
     quoteRouteData.turismo = {
       originLatLng: [origin.lat, origin.lng],
       destLatLng: [place.lat, place.lng],
@@ -1327,6 +1375,7 @@
     const originName = originLabel();
     const destLabel = `${route.name} (${route.stops.join(" → ")})`;
     showQuoteLoading("turismo", originName, destLabel);
+    const gen = nextQuoteGeneration("turismo");
 
     let totalKm = 0;
     let totalMinutes = 0;
@@ -1335,6 +1384,7 @@
     let legOrigin = origin;
     for (const stop of stopPlaces) {
       const leg = await fetchRoute(legOrigin, stop);
+      if (!isCurrentQuoteGeneration("turismo", gen)) return; // se eligió otro destino/ruta mientras tanto
       totalKm += leg.distanceKm;
       totalMinutes += leg.minutes;
       if (!leg.real) allReal = false;
@@ -1675,8 +1725,13 @@
       }
 
       const negotiatePrice = $("#confirmNegotiatePrice").value.trim();
-      if (negotiatePrice) {
-        msg += `\n*Precio propuesto por el cliente:* ${formatMoney(Number(negotiatePrice))} (a negociar, sujeto a tráfico, hora, aire acondicionado y clima).`;
+      const negotiatePriceNum = Number(negotiatePrice);
+      // El input es type="number" min="0", pero como este modal no es un
+      // <form> que se envía, esa validación del navegador nunca se dispara
+      // — sin este chequeo, un valor no numérico mandaba "$NaN" al mensaje,
+      // y uno negativo se enviaba tal cual.
+      if (negotiatePrice && Number.isFinite(negotiatePriceNum) && negotiatePriceNum > 0) {
+        msg += `\n*Precio propuesto por el cliente:* ${formatMoney(negotiatePriceNum)} (a negociar, sujeto a tráfico, hora, aire acondicionado y clima).`;
       }
 
       if (getFrequentCount() >= FREQUENT_THRESHOLD) {
@@ -1866,7 +1921,14 @@
   // Para tipos de vehículo con varias fotos reales (ej. Sedán), las va
   // rotando automáticamente para mostrar que puede llegar cualquiera de
   // esos autos — el cliente no elige el vehículo específico.
+  let vehiclePhotoIntervals = [];
   function wireVehiclePhotoRotation() {
+    // Si esta función se vuelve a llamar (ej. renderVehicles() se ejecuta
+    // de nuevo en el futuro), hay que limpiar los intervals anteriores
+    // antes de crear otros — si no, se acumulan y las fotos rotan cada vez
+    // más rápido sin que se note la causa.
+    vehiclePhotoIntervals.forEach((id) => clearInterval(id));
+    vehiclePhotoIntervals = [];
     $$(".vehicle-photo[data-photos]").forEach((img) => {
       let photos;
       try {
@@ -1876,12 +1938,13 @@
       }
       if (photos.length < 2) return;
       const dots = img.parentElement.querySelectorAll(".vehicle-media-dot");
-      setInterval(() => {
+      const intervalId = setInterval(() => {
         const next = (Number(img.dataset.photoIdx) + 1) % photos.length;
         img.dataset.photoIdx = String(next);
         img.src = photos[next];
         dots.forEach((d, i) => d.classList.toggle("on", i === next));
       }, 3200);
+      vehiclePhotoIntervals.push(intervalId);
     });
   }
 
@@ -2257,8 +2320,22 @@
       const name = val("join-name");
       const phone = val("join-phone");
       if (!name || !phone) {
+        errorEl.textContent = "Escribe al menos tu nombre y tu teléfono para poder contactarte.";
         errorEl.hidden = false;
         (name ? document.getElementById("join-phone") : document.getElementById("join-name")).focus();
+        return;
+      }
+
+      // El campo tiene min="18" max="80" en el HTML, pero como el formulario
+      // usa novalidate (para controlar nosotros el mensaje de error), esos
+      // límites nunca se aplicaban solos — se podía enviar una edad como
+      // "3" o "999" tal cual al mensaje de WhatsApp.
+      const age = val("join-age");
+      const ageNum = Number(age);
+      if (age && (!Number.isFinite(ageNum) || ageNum < 18 || ageNum > 80)) {
+        errorEl.textContent = "Escribe una edad válida (entre 18 y 80 años), o deja el campo vacío.";
+        errorEl.hidden = false;
+        document.getElementById("join-age").focus();
         return;
       }
       errorEl.hidden = true;
@@ -2271,7 +2348,6 @@
         `*Nombre completo:* ${name}`,
         `*Teléfono/WhatsApp:* ${phone}`,
       ];
-      const age = val("join-age");
       if (age) lines.push(`*Edad:* ${age}`);
       const location = val("join-location");
       if (location) lines.push(`*Municipio y departamento:* ${location}`);
@@ -2380,23 +2456,35 @@
     }
   }
 
+  // Todo el cuerpo va en un único try/catch (no solo el JSON.parse): el
+  // estado guardado puede venir de una versión anterior del sitio con una
+  // forma distinta (STORAGE_KEY no se ha versionado en cada cambio), y sin
+  // esto un campo faltante (ej. "saved.place" sin "name") lanzaba una
+  // excepción que cortaba silenciosamente el resto de la inicialización de
+  // la página — incluyendo el requestGeolocation() que viene justo después
+  // de restoreAll() en DOMContentLoaded, dejando al cliente sin que se le
+  // pida su ubicación nunca más, sin ningún error visible.
   function restoreAll() {
-    let state;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
-      state = JSON.parse(raw);
+      const state = JSON.parse(raw);
+      restoreAllFromState(state);
     } catch (err) {
-      return;
+      /* Estado guardado corrupto o de una forma que ya no reconocemos:
+         se ignora por completo y el sitio arranca limpio, como si fuera
+         la primera visita. */
     }
+  }
 
+  function restoreAllFromState(state) {
     if (state.travel) {
       Object.keys(state.travel).forEach((prefix) => {
         const saved = state.travel[prefix];
-        if (!saved) return;
+        if (!saved || !saved.place) return;
         if (prefix === "movilizarte") {
           lastMovilizarteSelection = saved.place;
-          $("#input-movilizarte").value = saved.place.name;
+          $("#input-movilizarte").value = saved.place.name || "";
         }
         if (prefix === "aeropuerto") lastAirportSelection = saved.place;
         if (prefix === "departamento") lastDepartmentSelection = saved.place;

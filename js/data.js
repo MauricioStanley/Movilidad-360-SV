@@ -34,6 +34,11 @@ const CONFIG = {
   // Recargo fijo por llevar mascota (se suma al precio estimado, no reemplaza
   // el cálculo por distancia).
   petFee: 1.99,
+  // ⚠️ REVISAR: tarifa mínima por viaje (antes del recargo de mascota).
+  // Evita que un trayecto muy corto (o un origen y destino casi idénticos)
+  // cotice $0.00 o un precio ínfimo. $2.00 es un valor de partida técnico,
+  // no una decisión de negocio — ajústalo al mínimo real que quieran cobrar.
+  minFareUsd: 2.0,
   // Cuentas bancarias para pago por transferencia. El cliente elige una al
   // confirmar su reserva y puede copiar el número con un botón.
   bankAccounts: [
