@@ -1,0 +1,5 @@
+# Proyecto de autoría del video tutorial (HyperFrames): composiciones,
+# capturas y fuentes usadas para RENDERIZAR el video. El resultado final
+# (video/tutorial.mp4 + el poster en img/brand/) sí se publica; esta carpeta
+# es material de trabajo, no algo que el sitio en vivo necesite servir.
+videos/

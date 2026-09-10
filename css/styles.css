@@ -213,6 +213,34 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
   gap: clamp(1.5rem, 4vw, 2.5rem);
   max-width: 780px;
 }
+/* Video tutorial: lo primero que se ve del hero. Se queda "en pausa" (sin
+   <source src>, solo data-src) hasta que app.js confirma con
+   IntersectionObserver que está visible — así no se descarga en celulares
+   con datos limitados si por lo que sea nunca llega a mostrarse, y se
+   pausa (sin volver a descargar) en cuanto sale de la pantalla. */
+.hero-video-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: fit-content;
+}
+.hero-video {
+  width: min(240px, 62vw);
+  aspect-ratio: 9 / 16;
+  border-radius: 22px;
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-lg);
+  background: var(--blue-950);
+  object-fit: cover;
+}
+.hero-video-caption {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  color: var(--green-300);
+}
+
 .hero-eyebrow {
   display: inline-flex;
   align-items: center;
