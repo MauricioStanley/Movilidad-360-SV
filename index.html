@@ -31,7 +31,7 @@
 <!-- Google Analytics (GA4). El script de arranque vive en js/ga.js (no
      inline) para que la CSP de arriba no necesite 'unsafe-inline'. -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-F59WF19VVM"></script>
-<script src="js/ga.js?v=30"></script>
+<script src="js/ga.js?v=31"></script>
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -40,7 +40,7 @@
 <meta name="apple-mobile-web-app-title" content="Movilidad 360">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="css/styles.css?v=30">
+<link rel="stylesheet" href="css/styles.css?v=31">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -531,20 +531,28 @@
     </div>
   </section>
 
-  <!-- ============ TESTIMONIOS ============
-       ⚠️ OCULTO A PROPÓSITO (pedido del cliente): los testimonios eran de
-       ejemplo/placeholder. Se reactiva quitando este comentario en cuanto
-       el dueño tenga su cuenta de Google Business verificada y reseñas
-       reales que mostrar.
-  <section class="section-pad testimonials-section">
+  <!-- ============ RESEÑAS ============
+       El bloque "Déjanos tu reseña" siempre se muestra (sus botones se
+       activan solos cuando data.js -> CONFIG.googleWriteReviewUrl /
+       googleReviewsUrl tienen enlace).
+       La cuadrícula #testimonials-grid empieza vacía y oculta: js/app.js la
+       activa únicamente cuando data.js -> TESTIMONIALS tiene reseñas
+       reales. Para publicar testimonios, llénalos ahí (no hace falta tocar
+       este HTML). -->
+  <section class="section-pad reviews-section">
     <div class="wrap">
       <span class="eyebrow">Confianza</span>
       <h2 class="section-title">Lo que dicen quienes ya viajaron con nosotros</h2>
-      <div id="testimonials-grid" class="testimonials-grid"></div>
-      <a id="google-reviews-link" class="btn btn-outline-ink btn-sm mt-md" href="#" target="_blank" rel="noopener" hidden>Ver nuestras reseñas en Google</a>
+      <div id="testimonials-grid" class="testimonials-grid" hidden></div>
+      <div class="reviews-cta">
+        <p class="reviews-cta-text">¿Ya viajaste con nosotros? Contá cómo te fue. Tu reseña ayuda a que más personas se animen — te toma menos de un minuto.</p>
+        <div class="reviews-cta-actions">
+          <a id="google-write-review" class="btn btn-gold" href="#" target="_blank" rel="noopener" hidden>Déjanos tu reseña</a>
+          <a id="google-reviews-link" class="btn btn-outline-ink" href="#" target="_blank" rel="noopener" hidden>Ver reseñas en Google</a>
+        </div>
+      </div>
     </div>
   </section>
-  -->
 
   <!-- ============ SOBRE NOSOTROS ============ -->
   <section class="section-pad about-section" id="nosotros">
@@ -963,8 +971,8 @@
   </div>
 </div>
 
-<script src="js/data.js?v=30"></script>
-<script src="js/app.js?v=30"></script>
-<script src="js/enhance.js?v=30"></script>
+<script src="js/data.js?v=31"></script>
+<script src="js/app.js?v=31"></script>
+<script src="js/enhance.js?v=31"></script>
 </body>
 </html>
