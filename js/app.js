@@ -1928,16 +1928,39 @@
   /* =====================================================================
      Testimonios / vehículos (contenido editable desde data.js)
      ===================================================================== */
+  // Dibuja "★★★★☆" para una calificación de 1 a 5. Devuelve "" si el
+  // valor no es un número válido en ese rango (la tarjeta va sin estrellas).
+  function renderStars(rating) {
+    const n = Math.round(Number(rating));
+    if (!Number.isFinite(n) || n < 1 || n > 5) return "";
+    const full = "★".repeat(n);
+    const empty = "☆".repeat(5 - n);
+    return `<div class="testimonial-stars" aria-label="${n} de 5 estrellas">${full}<span class="testimonial-stars-empty">${empty}</span></div>`;
+  }
+
   function renderTestimonials() {
     const grid = $("#testimonials-grid");
     if (!grid) return;
-    grid.innerHTML = TESTIMONIALS.map(
-      (t) => `
+    const items = Array.isArray(TESTIMONIALS) ? TESTIMONIALS : [];
+    const section = grid.closest(".reviews-section");
+    // Sin testimonios reales todavía: no dibujamos tarjetas vacías.
+    if (!items.length) {
+      grid.innerHTML = "";
+      grid.hidden = true;
+      return;
+    }
+    grid.hidden = false;
+    if (section) section.classList.add("has-testimonials");
+    grid.innerHTML = items
+      .map(
+        (t) => `
       <figure class="testimonial-card">
-        <blockquote>"${t.quote}"</blockquote>
-        <figcaption><strong>${t.name}</strong><span>${t.service}</span></figcaption>
+        ${renderStars(t.rating)}
+        <blockquote>"${escapeHtml(t.quote || "")}"</blockquote>
+        <figcaption><strong>${escapeHtml(t.name || "")}</strong><span>${escapeHtml(t.service || "")}</span></figcaption>
       </figure>`
-    ).join("");
+      )
+      .join("");
   }
 
   const VEHICLE_ICONS = {
@@ -2268,14 +2291,20 @@
     });
   }
 
-  // Muestra el enlace a reseñas de Google solo si ya se configuró la URL
-  // real en CONFIG.googleReviewsUrl (data.js).
+  // Enlaza los botones de reseñas de Google. Cada botón solo se muestra si
+  // su URL correspondiente está configurada en data.js (CONFIG):
+  //   #google-reviews-link  → CONFIG.googleReviewsUrl    (ver la ficha)
+  //   #google-write-review  → CONFIG.googleWriteReviewUrl (dejar reseña)
   function wireGoogleReviewsLink() {
-    const el = $("#google-reviews-link");
-    if (!el) return;
-    if (CONFIG.googleReviewsUrl) {
-      el.href = CONFIG.googleReviewsUrl;
-      el.hidden = false;
+    const viewEl = $("#google-reviews-link");
+    if (viewEl && CONFIG.googleReviewsUrl) {
+      viewEl.href = CONFIG.googleReviewsUrl;
+      viewEl.hidden = false;
+    }
+    const writeEl = $("#google-write-review");
+    if (writeEl && CONFIG.googleWriteReviewUrl) {
+      writeEl.href = CONFIG.googleWriteReviewUrl;
+      writeEl.hidden = false;
     }
   }
 

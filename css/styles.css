@@ -974,13 +974,43 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
 .vehicle-capacity { font-family: var(--font-mono); font-size: 0.75rem; color: var(--green-300); margin-bottom: 0.5rem; }
 .vehicle-desc { font-size: 0.85rem; color: var(--paper-dim); line-height: 1.5; }
 
-/* ---------- Testimonios ---------- */
-.testimonials-section { background: var(--blue-900); }
+/* ---------- Reseñas / testimonios ---------- */
+.reviews-section { background: var(--blue-900); }
 .testimonials-grid {
   display: grid;
   gap: 1.2rem;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
   margin-top: 1.5rem;
+}
+.testimonials-grid[hidden] { display: none; }
+.testimonial-stars {
+  font-size: 1rem;
+  letter-spacing: 0.12em;
+  color: #f5b53d;
+  margin-bottom: 0.7rem;
+}
+.testimonial-stars-empty { color: rgba(255, 255, 255, 0.22); }
+
+/* Bloque "Déjanos tu reseña" — siempre visible */
+.reviews-cta {
+  margin-top: 1.6rem;
+  padding: 1.6rem;
+  background: var(--blue-800);
+  border: 1px solid var(--border-softer);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.reviews-section.has-testimonials .reviews-cta { margin-top: 2.2rem; }
+.reviews-cta-text {
+  margin: 0 0 1.2rem;
+  max-width: 54ch;
+  color: var(--paper-dim);
+  line-height: 1.6;
+}
+.reviews-cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
 }
 .testimonial-card {
   margin: 0;

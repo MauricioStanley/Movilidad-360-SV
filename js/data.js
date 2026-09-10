@@ -51,10 +51,13 @@ const CONFIG = {
   // ⚠️ REEMPLAZAR con el número real de viajes completados.
   tripsCompleted: 500,
   responseMinutes: 5,
-  // ⚠️ REEMPLAZAR: pega aquí el enlace a tu perfil de Google Business
-  // (ej. "https://g.page/r/....") cuando lo tengas. Mientras esté vacío
-  // ("") el botón de reseñas de Google no se muestra en el sitio.
-  googleReviewsUrl: "",
+  // Enlace al Perfil de Empresa en Google (abre la ficha con las reseñas).
+  // Si se deja vacío (""), el botón "Ver reseñas en Google" no se muestra.
+  googleReviewsUrl: "https://g.page/r/CRSjuTnHg7ohECE",
+  // Enlace directo para que el cliente deje una reseña (abre la ventana de
+  // calificación con estrellas). Si se deja vacío (""), el botón
+  // "Déjanos tu reseña" no se muestra.
+  googleWriteReviewUrl: "https://g.page/r/CRSjuTnHg7ohECE/review",
   // Métodos de pago que se ofrecen al cliente al cotizar.
   paymentMethods: ["Efectivo", "Transferencia"],
   // Política de cancelación: si el viaje cuesta más de freeThresholdUsd,
@@ -171,25 +174,23 @@ const TOURIST_PLACES = [
 ];
 
 /* ---------- Testimonios ----------
-   ⚠️ REEMPLAZAR: estos son testimonios de ejemplo. Antes de publicar,
-   cambia el nombre y el texto por testimonios reales de tus clientes. */
-const TESTIMONIALS = [
-  {
-    name: "[Reemplazar: nombre del cliente]",
-    service: "Viaje local",
-    quote: "[Reemplazar: escribe aquí un testimonio real de un cliente satisfecho con el servicio de viaje local.]",
-  },
-  {
-    name: "[Reemplazar: nombre del cliente]",
-    service: "Traslado al aeropuerto",
-    quote: "[Reemplazar: escribe aquí un testimonio real sobre un traslado al aeropuerto.]",
-  },
-  {
-    name: "[Reemplazar: nombre del cliente]",
-    service: "Turismo",
-    quote: "[Reemplazar: escribe aquí un testimonio real de un viaje turístico con Movilidad 360 SV.]",
-  },
-];
+   La cuadrícula de testimonios está OCULTA en index.html hasta que haya
+   reseñas reales que mostrar (ver el comentario en la sección
+   "reviews-section" de index.html).
+
+   Cuando el Perfil de Empresa ya tenga reseñas:
+   1. Copia aquí de 3 a 6 reseñas reales de Google, cada una con:
+        name    → nombre de quien la escribió (o primer nombre + inicial)
+        service → a qué servicio corresponde ("Viaje local", "Aeropuerto"…)
+        quote   → el texto de la reseña
+        rating  → número de estrellas, 1 a 5 (opcional; si falta, no se
+                  dibujan estrellas en esa tarjeta)
+   2. En index.html, descomenta el bloque <div id="testimonials-grid"> …
+      dentro de la sección de reseñas.
+   Ejemplo de entrada real:
+     { name: "María G.", service: "Aeropuerto", rating: 5,
+       quote: "Puntualísimos y el precio fue el mismo que cotizaron." } */
+const TESTIMONIALS = [];
 
 /* ---------- Vehículos disponibles ----------
    Ilustrativo: el cliente no elige el vehículo específico, solo el tipo
