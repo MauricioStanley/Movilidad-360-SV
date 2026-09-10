@@ -12,9 +12,12 @@ const CONFIG = {
   whatsappNumber: "50375031132",
   brand: "MOVILIDAD 360 SV",
   slogan: "Tu destino está más cerca de lo que te imaginas",
-  // Punto de referencia por defecto: Plaza Las Américas (El Salvador del Mundo),
-  // usado como origen cuando el usuario no comparte su ubicación.
-  originFallback: { name: "San Salvador (Centro)", lat: 13.6989, lng: -89.1914 },
+  // Punto de referencia por defecto: Plaza Las Américas (Monumento al Divino
+  // Salvador del Mundo), usado como origen cuando el usuario no comparte su
+  // ubicación. Debe ser un punto distinto de cualquier destino de las listas
+  // (LOCAL_PLACES / TOURIST_PLACES): si coincide exacto con uno, cotizar
+  // "hacia allí" sin GPS daba 0 km, ruta invisible y precio al mínimo.
+  originFallback: { name: "San Salvador (Centro)", lat: 13.70169, lng: -89.22437 },
   // Tarifa progresiva por tramos (estilo inDrive), igual para cualquier
   // viaje de pasajeros sin importar la zona: cada tramo de distancia
   // tiene su propia tarifa por km, y solo se cobra esa tarifa a los km
