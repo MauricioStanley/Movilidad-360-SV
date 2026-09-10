@@ -2285,6 +2285,54 @@
   }
 
   /* =====================================================================
+     Video tutorial del hero: carga perezosa + autoplay en bucle
+     El <video> arranca SIN <source src> real (solo data-src) para no
+     descargar nada hasta que de verdad esté a la vista. En cuanto entra al
+     viewport se le asigna el src, se reproduce en bucle (muted, requisito
+     de los navegadores para autoplay), y si sale de pantalla se pausa sin
+     volver a descargarlo — así no sigue consumiendo batería/CPU de fondo,
+     pero tampoco hay que re-descargar el video cada vez que se desplaza de
+     un lado a otro de la página.
+     ===================================================================== */
+  function wireHeroVideo() {
+    const video = document.querySelector(".hero-video");
+    if (!video) return;
+    const source = video.querySelector("source[data-src]");
+    if (!source) return;
+
+    let loaded = false;
+    function ensureLoaded() {
+      if (loaded) return;
+      loaded = true;
+      source.src = source.dataset.src;
+      video.load();
+    }
+    function tryPlay() {
+      ensureLoaded();
+      // El navegador puede bloquear el autoplay (poco común con muted,
+      // pero pasa en algún navegador viejo o con datos ahorrados) — no es
+      // un error real del sitio, el video simplemente se queda en el
+      // poster hasta que el cliente lo toque.
+      video.play().catch(() => {});
+    }
+
+    if (!("IntersectionObserver" in window)) {
+      tryPlay();
+      return;
+    }
+    const obs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) tryPlay();
+          else if (loaded) video.pause();
+        });
+      },
+      { threshold: 0.25 }
+    );
+    obs.observe(video);
+  }
+
+  /* =====================================================================
      Enlaces genéricos de WhatsApp
      ===================================================================== */
   function wireGenericWaLinks() {
@@ -2604,6 +2652,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     $("#year").textContent = new Date().getFullYear();
 
+    wireHeroVideo();
     wireGenericWaLinks();
     wireTogglePanels();
     wireMapModal();

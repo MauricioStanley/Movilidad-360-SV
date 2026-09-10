@@ -31,7 +31,7 @@
 <!-- Google Analytics (GA4). El script de arranque vive en js/ga.js (no
      inline) para que la CSP de arriba no necesite 'unsafe-inline'. -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-F59WF19VVM"></script>
-<script src="js/ga.js?v=28"></script>
+<script src="js/ga.js?v=29"></script>
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
@@ -40,7 +40,7 @@
 <meta name="apple-mobile-web-app-title" content="Movilidad 360">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="css/styles.css?v=28">
+<link rel="stylesheet" href="css/styles.css?v=29">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -90,6 +90,20 @@
       <circle cx="700" cy="150" r="3" fill="#55b8b6"/>
     </svg>
     <div class="wrap hero-inner">
+      <div class="hero-video-wrap">
+        <video
+          class="hero-video"
+          poster="img/brand/tutorial-poster.jpg"
+          muted
+          loop
+          playsinline
+          preload="none"
+          aria-label="Video tutorial: cómo pedir tu viaje con Movilidad 360 SV en menos de un minuto"
+        >
+          <source data-src="video/tutorial.mp4" type="video/mp4">
+        </video>
+        <p class="hero-video-caption">▶ Mira cómo pedir tu viaje en menos de un minuto</p>
+      </div>
       <span class="hero-eyebrow">Movilidad · Encomiendas · Turismo en El Salvador</span>
       <h1>Tu destino está <em>más cerca</em> de lo que te imaginas.</h1>
       <p class="hero-sub">Nosotros te llevamos. Tú disfruta del camino. Cotiza tu viaje, tu encomienda o tu próxima escapada en segundos, y reserva directo por WhatsApp.</p>
@@ -949,8 +963,8 @@
   </div>
 </div>
 
-<script src="js/data.js?v=28"></script>
-<script src="js/app.js?v=28"></script>
-<script src="js/enhance.js?v=28"></script>
+<script src="js/data.js?v=29"></script>
+<script src="js/app.js?v=29"></script>
+<script src="js/enhance.js?v=29"></script>
 </body>
 </html>
