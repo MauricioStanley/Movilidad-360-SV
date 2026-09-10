@@ -293,15 +293,19 @@
       clearTimeout(timeoutId);
       if (!res.ok) return [];
       const data = await res.json();
-      return data.map((d) => {
-        const parts = d.display_name.split(",").map((s) => s.trim());
-        return {
-          name: sanitizeWaText(parts.slice(0, 2).join(", ")),
-          fullName: sanitizeWaText(d.display_name),
-          lat: parseFloat(d.lat),
-          lng: parseFloat(d.lon),
-        };
-      });
+      return data
+        .map((d) => {
+          const parts = d.display_name.split(",").map((s) => s.trim());
+          return {
+            name: sanitizeWaText(parts.slice(0, 2).join(", ")),
+            fullName: sanitizeWaText(d.display_name),
+            lat: parseFloat(d.lat),
+            lng: parseFloat(d.lon),
+          };
+        })
+        // Descarta resultados con coordenadas inválidas: un NaN aquí se
+        // propaga a haversineKm -> precio "$NaN" / tiempo "~NaNh".
+        .filter((r) => Number.isFinite(r.lat) && Number.isFinite(r.lng));
     } catch (err) {
       clearTimeout(timeoutId);
       return [];
@@ -558,6 +562,13 @@
 
   function showQuote(prefix, data) {
     const { originName, destName, price, minutes, distanceKm, real } = data;
+    // Red de seguridad: si llega una cotización con distancia ~0 (origen y
+    // destino en el mismo punto), incluso restaurada de una versión vieja
+    // guardada en el navegador, no mostramos "0.0 km" ni una ruta rota.
+    if (!Number.isFinite(distanceKm) || distanceKm < SAME_POINT_KM) {
+      showQuoteSamePoint(prefix, originName, destName);
+      return;
+    }
     $(`#quote-${prefix}-route`).textContent = `${originName} → ${destName} · ${distanceKm.toFixed(1)} km`;
     $(`#quote-${prefix}-price`).textContent = formatMoney(price);
     $(`#quote-${prefix}-eta`).textContent = `Tiempo estimado: ${formatEta(minutes)}`;
@@ -598,6 +609,47 @@
         });
       };
     }
+  }
+
+  // Umbral por debajo del cual el origen y el destino se consideran el
+  // mismo punto (~100 m). Por debajo de esto no es un viaje real: OSRM
+  // puede devolver 0 km y una ruta degenerada que no se dibuja, así que
+  // en vez de mostrar "0.0 km / precio mínimo / sin ruta" (el bug de
+  // "San Jacinto → Centro Histórico" sin GPS) se le pide al cliente que
+  // elija un destino distinto.
+  const SAME_POINT_KM = 0.1;
+  function isEssentiallySamePoint(a, b) {
+    if (!a || !b || !Number.isFinite(a.lat) || !Number.isFinite(b.lat)) return false;
+    return haversineKm(a.lat, a.lng, b.lat, b.lng) < SAME_POINT_KM;
+  }
+
+  // Estado "el origen y el destino son el mismo punto": deja la parada sin
+  // una cotización válida (botón de WhatsApp deshabilitado) y con un
+  // mensaje claro, en vez de un número roto.
+  function showQuoteSamePoint(prefix, originName, destName) {
+    const routeEl = $(`#quote-${prefix}-route`);
+    if (routeEl) routeEl.textContent = `${originName} → ${destName}`;
+    const priceEl = $(`#quote-${prefix}-price`);
+    if (priceEl) priceEl.textContent = "—";
+    const etaEl = $(`#quote-${prefix}-eta`);
+    if (etaEl) etaEl.textContent = "El punto de partida y el destino son casi el mismo. Elige un destino diferente para cotizar.";
+    const badge = $(`#quote-${prefix}-badge`);
+    if (badge) {
+      badge.textContent = "";
+      badge.classList.remove("is-approx");
+    }
+    const routeLinkEl = $(`#route-link-${prefix}`);
+    if (routeLinkEl) routeLinkEl.hidden = true;
+    $(`#quote-${prefix}`).classList.add("show");
+    const waBtn = $(`#wa-${prefix}`);
+    if (waBtn) {
+      waBtn.setAttribute("aria-disabled", "true");
+      waBtn.classList.remove("is-loading");
+      waBtn.onclick = null;
+    }
+    // No dejamos una cotización "buena" guardada para esta parada.
+    lastQuoteResult[prefix] = null;
+    quoteRouteData[prefix] = null;
   }
 
   /* =====================================================================
@@ -685,6 +737,11 @@
     $("#input-movilizarte").value = place.name;
     const origin = currentOrigin();
     const originName = originLabel();
+    if (isEssentiallySamePoint(origin, place)) {
+      showQuoteSamePoint("movilizarte", originName, place.name);
+      persistAll();
+      return;
+    }
     showQuoteLoading("movilizarte", originName, place.name);
     const gen = nextQuoteGeneration("movilizarte");
     const route = await fetchRoute(origin, place);
@@ -751,6 +808,11 @@
     lastAirportSelection = airport;
     const origin = currentOrigin();
     const originName = originLabel();
+    if (isEssentiallySamePoint(origin, airport)) {
+      showQuoteSamePoint("aeropuerto", originName, airport.name);
+      persistAll();
+      return;
+    }
     showQuoteLoading("aeropuerto", originName, airport.name);
     const gen = nextQuoteGeneration("aeropuerto");
     const route = await fetchRoute(origin, airport);
@@ -784,6 +846,8 @@
     large: "Grande (8–20kg)",
   };
 
+  let parcelQuoteGen = 0;
+
   async function updateParcelQuote() {
     if (!parcelState.size) return;
     let price = CONFIG.pricing.parcel[parcelState.size];
@@ -791,10 +855,22 @@
 
     let distanceKm = null;
     let real = false;
-    if (parcelState.fromPoint && parcelState.toPoint) {
+    // Recolección y entrega en el mismo punto (o casi): no hay tramo real
+    // que cobrar por km ni ruta que dibujar — se cotiza solo el precio base
+    // por tamaño y se avisa, en vez de mostrar "0.0 km" y una ruta rota.
+    const samePoint =
+      parcelState.fromPoint &&
+      parcelState.toPoint &&
+      isEssentiallySamePoint(parcelState.fromPoint, parcelState.toPoint);
+
+    if (parcelState.fromPoint && parcelState.toPoint && !samePoint) {
       $("#quote-encomienda-eta").textContent = "🧭 Calculando ruta real por carretera…";
       $("#quote-encomienda").classList.add("show");
+      const myGen = ++parcelQuoteGen;
       const route = await fetchRoute(parcelState.fromPoint, parcelState.toPoint);
+      // Si el cliente cambió algo (tamaño, direcciones…) mientras se
+      // calculaba la ruta, esta respuesta ya no corresponde: se descarta.
+      if (myGen !== parcelQuoteGen) return;
       distanceKm = route.distanceKm;
       real = route.real;
       price += distanceKm * CONFIG.ratePerKmParcel;
@@ -804,11 +880,13 @@
         coords: route.coords,
         real: route.real,
       };
+    } else {
+      quoteRouteData.encomienda = null;
     }
 
     $("#quote-encomienda-route").textContent =
       `Encomienda ${parcelSizeLabels[parcelState.size]}${parcelState.fragile ? " · frágil" : ""}` +
-      (distanceKm !== null ? ` · ${distanceKm.toFixed(1)} km` : "");
+      (distanceKm !== null ? ` · ${distanceKm.toFixed(1)} km` : samePoint ? " · recolección y entrega en el mismo punto" : "");
     $("#quote-encomienda-price").textContent = formatMoney(price);
     $("#quote-encomienda-eta").textContent = parcelState.urgent
       ? "Entrega estimada: mismo día"
@@ -1169,6 +1247,11 @@
     const origin = currentOrigin();
     const originName = originLabel();
     const destName = `Departamento de ${dept.name}`;
+    if (isEssentiallySamePoint(origin, dept)) {
+      showQuoteSamePoint("departamento", originName, destName);
+      persistAll();
+      return;
+    }
     showQuoteLoading("departamento", originName, destName);
     const gen = nextQuoteGeneration("departamento");
     const route = await fetchRoute(origin, dept);
@@ -1322,6 +1405,11 @@
     lastTourismRouteSelection = null;
     const origin = currentOrigin();
     const originName = originLabel();
+    if (isEssentiallySamePoint(origin, place)) {
+      showQuoteSamePoint("turismo", originName, place.name);
+      persistAll();
+      return;
+    }
     showQuoteLoading("turismo", originName, place.name);
     const gen = nextQuoteGeneration("turismo");
     const route = await fetchRoute(origin, place);
@@ -1383,6 +1471,13 @@
     let coordsAll = [];
     let legOrigin = origin;
     for (const stop of stopPlaces) {
+      // Saltamos tramos de longitud cero (dos paradas que coinciden, o el
+      // origen justo encima de la primera parada): no aportan distancia y
+      // sí ensucian el trazo del mapa con coords degeneradas.
+      if (isEssentiallySamePoint(legOrigin, stop)) {
+        legOrigin = stop;
+        continue;
+      }
       const leg = await fetchRoute(legOrigin, stop);
       if (!isCurrentQuoteGeneration("turismo", gen)) return; // se eligió otro destino/ruta mientras tanto
       totalKm += leg.distanceKm;
@@ -1390,6 +1485,12 @@
       if (!leg.real) allReal = false;
       if (leg.coords) coordsAll = coordsAll.concat(leg.coords);
       legOrigin = stop;
+    }
+
+    if (totalKm < SAME_POINT_KM) {
+      showQuoteSamePoint("turismo", originName, destLabel);
+      persistAll();
+      return;
     }
 
     const lastStop = stopPlaces[stopPlaces.length - 1];
@@ -1493,7 +1594,8 @@
       marker.remove();
       marker = null;
     }
-    const latlngs = data.coords && data.coords.length ? data.coords : [data.originLatLng, data.destLatLng];
+    const latlngs =
+      data.coords && data.coords.length >= 2 ? data.coords : [data.originLatLng, data.destLatLng];
     routeLine = L.polyline(latlngs, {
       color: data.real ? "#7cb342" : "#8fa0ad",
       weight: 4,
@@ -1503,7 +1605,15 @@
       L.marker(data.originLatLng).addTo(map).bindPopup("Origen"),
       L.marker(data.destLatLng).addTo(map).bindPopup("Destino"),
     ];
-    map.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
+    // Si el trazo es degenerado (origen y destino en el mismo punto),
+    // getBounds() da un rectángulo de área cero y fitBounds no encuadra
+    // nada útil — mejor centrar el mapa en el punto con un zoom fijo.
+    const bounds = routeLine.getBounds();
+    if (bounds.isValid() && !bounds.getNorthEast().equals(bounds.getSouthWest())) {
+      map.fitBounds(bounds, { padding: [30, 30] });
+    } else {
+      map.setView(data.originLatLng, 15);
+    }
     $("#mapModalHint").textContent = data.real
       ? "Ruta real calculada por carretera (la misma referencia que usamos para cobrar)."
       : "Ruta aproximada en línea recta — no se pudo calcular la ruta exacta por carretera en este momento.";
