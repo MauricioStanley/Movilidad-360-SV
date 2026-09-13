@@ -1,11 +1,15 @@
 /* =========================================================================
    MOVILIDAD 360 SV — styles.css
    Dirección visual: tema oscuro consistente en todo el sitio (azul noche
-   de fondo), con acentos verde manzana, plateado y blanco. Una línea de
-   ruta vertical conecta cada servicio como paradas de un mismo viaje.
-   ========================================================================= */
+   de fondo), con acentos verde manzana, plateado y blanco.
 
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500;1,9..144,600&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap");
+   Tipografía: fuentes del sistema (San Francisco en Apple, Segoe UI en
+   Windows, Roboto en Android) en vez de una tipografía web importada — es
+   la letra que el propio sistema operativo del visitante ya optimizó para
+   su pantalla, y evita una petición de red extra a Google Fonts. El
+   monoespaciado también es el nativo del sistema (SF Mono / Menlo /
+   Consolas), reservado para cifras y datos (precios, distancias, ETA).
+   ========================================================================= */
 
 /* ---------- Tokens ---------- */
 :root {
@@ -28,9 +32,9 @@
   --shadow-lg: 0 24px 60px -20px rgba(0, 0, 0, 0.55);
   --shadow-sm: 0 8px 24px -12px rgba(0, 0, 0, 0.4);
 
-  --font-display: "Fraunces", Georgia, serif;
-  --font-body: "Manrope", -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: "IBM Plex Mono", "SFMono-Regular", monospace;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
 
   --radius-sm: 10px;
   --radius-md: 16px;
@@ -38,6 +42,11 @@
 
   --container: min(1180px, 92vw);
   --gutter: clamp(1.25rem, 3vw, 3rem);
+
+  /* Curva de salida que se acerca al asentamiento de un resorte (spring):
+     rápida al inicio, se posa sin rebote. Usada en hovers y transiciones
+     de tarjetas/botones en vez de "ease" lineal por tramos. */
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* ---------- Reset ---------- */
@@ -78,18 +87,19 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
 
 .wrap { width: var(--container); margin-inline: auto; }
 .eyebrow {
-  font-family: var(--font-mono);
-  font-size: clamp(0.68rem, 1.4vw, 0.78rem);
-  letter-spacing: 0.14em;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: clamp(0.74rem, 1.3vw, 0.83rem);
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--green-400);
 }
 .section-title {
   font-family: var(--font-display);
-  font-weight: 600;
-  font-size: clamp(1.5rem, 3.2vw, 2.35rem);
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  font-size: clamp(1.6rem, 3.4vw, 2.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.022em;
 }
 .section-lede {
   font-size: clamp(0.95rem, 1.6vw, 1.05rem);
@@ -111,12 +121,15 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
   border-radius: 999px;
   border: 1.5px solid transparent;
   cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, border-color .18s ease, color .18s ease;
+  transition: transform 0.32s var(--ease-spring), box-shadow 0.32s var(--ease-spring), background 0.2s ease, border-color .2s ease, color .2s ease;
   text-decoration: none;
   white-space: nowrap;
 }
 .btn:hover { transform: translateY(-2px); }
-.btn:active { transform: translateY(0) scale(0.985); }
+/* La respuesta al toque/clic tiene que sentirse instantánea: sin retraso
+   ni easing largo, solo una contracción rápida (ver skill de diseño de
+   Apple — "response" es la base de que algo se sienta directo). */
+.btn:active { transform: scale(0.96); transition-duration: 0.1s; }
 .btn[hidden] { display: none; }
 .btn-gold {
   background: linear-gradient(180deg, var(--green-400), var(--green-500));
@@ -152,10 +165,15 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
   position: sticky;
   top: 0;
   z-index: 60;
-  background: rgba(10, 22, 40, 0.82);
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  background: rgba(10, 22, 40, 0.7);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-bottom: 1px solid var(--border-softer);
+}
+/* Si el sistema pide menos transparencia, el material se vuelve casi
+   sólido en vez de perder el blur y quedar plano. */
+@media (prefers-reduced-transparency: reduce) {
+  .site-header { background: var(--blue-950); backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
 .site-header .wrap {
   display: flex;
@@ -179,7 +197,7 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
 }
 .brand-mark span { font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; color: var(--blue-950); }
 .brand-mark-img { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; object-fit: cover; }
-.brand-word { font-family: var(--font-display); font-style: italic; font-weight: 600; font-size: clamp(1rem, 2vw, 1.2rem); letter-spacing: 0.01em; }
+.brand-word { font-family: var(--font-display); font-weight: 700; font-size: clamp(1rem, 2vw, 1.2rem); letter-spacing: -0.01em; }
 .brand-word small { display: block; font-family: var(--font-mono); font-style: normal; font-size: 0.6rem; letter-spacing: 0.16em; color: var(--green-300); text-transform: uppercase; margin-top: 1px; }
 .header-actions { display: flex; align-items: center; gap: 0.7rem; }
 .header-actions .btn-ghost { display: none; }
@@ -255,12 +273,14 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
 .hero-eyebrow::before { content: ""; width: 22px; height: 1.5px; background: var(--green-400); }
 .hero h1 {
   font-family: var(--font-display);
-  font-weight: 600;
-  font-size: clamp(2.4rem, 6.2vw, 4.1rem);
-  line-height: 1.04;
-  letter-spacing: -0.015em;
+  font-weight: 700;
+  font-size: clamp(2.6rem, 6.4vw, 4.4rem);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
 }
-.hero h1 em { font-style: italic; color: var(--green-300); font-weight: 500; }
+/* Apple casi nunca usa cursiva para enfatizar: el peso y el color hacen
+   el trabajo. */
+.hero h1 em { font-style: normal; color: var(--green-300); font-weight: 700; }
 .hero-sub {
   font-size: clamp(1.02rem, 2vw, 1.2rem);
   color: var(--paper-dim);
@@ -668,7 +688,7 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
   gap: 1.2rem;
   justify-items: center;
 }
-.cta-final h2 { font-family: var(--font-display); font-style: italic; font-weight: 500; font-size: clamp(1.5rem, 4vw, 2.3rem); max-width: 20ch; line-height: 1.2; }
+.cta-final h2 { font-family: var(--font-display); font-weight: 700; font-size: clamp(1.6rem, 4vw, 2.5rem); letter-spacing: -0.02em; max-width: 20ch; line-height: 1.15; }
 .cta-final .section-lede { text-align: center; }
 
 /* ---------- CTA de CodyWork (contacto para pedir tu propia web/app) ----------
@@ -697,7 +717,7 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
 @media (max-width: 900px) { .footer-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 560px) { .footer-grid { grid-template-columns: 1fr; } }
 .footer-brand .brand-word { color: var(--paper); }
-.footer-tagline { font-family: var(--font-display); font-style: italic; color: var(--green-300); margin-top: 0.9rem; font-size: 1.05rem; max-width: 34ch; line-height: 1.4; }
+.footer-tagline { font-family: var(--font-display); font-weight: 500; color: var(--green-300); margin-top: 0.9rem; font-size: 1.05rem; max-width: 34ch; line-height: 1.4; }
 .footer-logo-full { width: 140px; height: 140px; object-fit: contain; border-radius: var(--radius-md); margin-top: 1.2rem; }
 .footer-col h5 { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--silver-400); margin-bottom: 0.9rem; }
 .footer-col ul { display: grid; gap: 0.55rem; font-size: 0.88rem; }
@@ -1023,7 +1043,7 @@ html { scrollbar-color: var(--blue-600) var(--blue-900); scrollbar-width: thin; 
 .testimonial-card blockquote {
   margin: 0 0 1rem;
   font-family: var(--font-display);
-  font-style: italic;
+  font-weight: 500;
   font-size: 1.02rem;
   line-height: 1.5;
   color: var(--paper);

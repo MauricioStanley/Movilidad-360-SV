@@ -26,21 +26,19 @@
      cargar/ejecutar contenido — así, aunque alguien lograra inyectar HTML
      en algún campo, el navegador no ejecutaría scripts ni cargaría nada
      fuera de esta lista. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.googletagmanager.com https://unpkg.com; style-src 'self' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' https://router.project-osrm.org https://nominatim.openstreetmap.org https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com; object-src 'none'; base-uri 'self'; form-action 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.googletagmanager.com https://unpkg.com; style-src 'self' https://unpkg.com; font-src 'self'; img-src 'self' data: https://*.tile.openstreetmap.org https://unpkg.com https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' https://router.project-osrm.org https://nominatim.openstreetmap.org https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com; object-src 'none'; base-uri 'self'; form-action 'self';">
 <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
 <!-- Google Analytics (GA4). El script de arranque vive en js/ga.js (no
      inline) para que la CSP de arriba no necesite 'unsafe-inline'. -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-F59WF19VVM"></script>
-<script src="js/ga.js?v=31"></script>
+<script src="js/ga.js?v=32"></script>
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Movilidad 360">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="css/styles.css?v=31">
+<link rel="stylesheet" href="css/styles.css?v=32">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -971,8 +969,8 @@
   </div>
 </div>
 
-<script src="js/data.js?v=31"></script>
-<script src="js/app.js?v=31"></script>
-<script src="js/enhance.js?v=31"></script>
+<script src="js/data.js?v=32"></script>
+<script src="js/app.js?v=32"></script>
+<script src="js/enhance.js?v=32"></script>
 </body>
 </html>
