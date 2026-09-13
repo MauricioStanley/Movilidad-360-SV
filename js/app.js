@@ -2263,6 +2263,17 @@
     responseEls.forEach((el) => {
       el.textContent = `Respuesta estimada: ~${CONFIG.responseMinutes} min`;
     });
+    // Umbral de cancelación gratuita en la barra de confianza — un solo
+    // origen de verdad (CONFIG.cancellation), igual que en el FAQ y el
+    // modal de confirmación.
+    const cancelThresholdEl = $("#trust-cancel-threshold");
+    if (cancelThresholdEl) cancelThresholdEl.textContent = CONFIG.cancellation.freeThresholdUsd;
+    // Tarifa mínima mencionada en los avisos de "¿cómo se calcula el
+    // precio?" bajo cada cotización — mismo CONFIG.minFareUsd que usa
+    // estimatePrice(), para que nunca queden desincronizados.
+    $$(".min-fare-amount").forEach((el) => {
+      el.textContent = CONFIG.minFareUsd.toFixed(2).replace(/\.00$/, "");
+    });
   }
 
   function renderFAQ() {

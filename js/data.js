@@ -366,7 +366,14 @@ const FAQS = [
         const range = tier.upTo === Infinity ? `Desde el km ${from}` : `Km ${from}–${tier.upTo}`;
         return `${range}: $${tier.rate.toFixed(2)}/km`;
       });
-      return `El precio se calcula según la distancia real de la ruta por carretera, con una tarifa que baja por tramos entre más largo es el viaje: ${lines.join(" · ")}. Siempre es un estimado: el precio final se confirma por WhatsApp antes de tu viaje.`;
+      return `El precio se calcula según la distancia real de la ruta por carretera, con una tarifa que baja por tramos entre más largo es el viaje: ${lines.join(" · ")}. Todo viaje tiene una tarifa mínima de $${CONFIG.minFareUsd.toFixed(2)}, sin importar qué tan corto sea. Siempre es un estimado: el precio final se confirma por WhatsApp antes de tu viaje.`;
+    })(),
+  },
+  {
+    q: "¿Cómo se calcula el precio de una encomienda?",
+    a: (() => {
+      const p = CONFIG.pricing.parcel;
+      return `Se calcula sumando dos partes: una tarifa base según el tamaño del paquete (pequeño $${p.small.toFixed(2)}, mediano $${p.medium.toFixed(2)}, grande $${p.large.toFixed(2)}) más $${CONFIG.ratePerKmParcel.toFixed(2)} por cada km de la ruta entre el punto de recolección y el de entrega. Marcar la entrega como urgente (mismo día) suma $${p.urgentSurcharge.toFixed(2)} adicionales. Igual que con los viajes, es un estimado que se confirma por WhatsApp.`;
     })(),
   },
   {
