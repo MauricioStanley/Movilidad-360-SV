@@ -31,14 +31,14 @@
 <!-- Google Analytics (GA4). El script de arranque vive en js/ga.js (no
      inline) para que la CSP de arriba no necesite 'unsafe-inline'. -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-F59WF19VVM"></script>
-<script src="js/ga.js?v=32"></script>
+<script src="js/ga.js?v=33"></script>
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Movilidad 360">
-<link rel="stylesheet" href="css/styles.css?v=32">
+<link rel="stylesheet" href="css/styles.css?v=33">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -178,7 +178,7 @@
                   <span class="quote-eta" id="quote-movilizarte-eta"></span>
                   <span class="quote-route-badge" id="quote-movilizarte-badge"></span>
                   <button type="button" class="quote-route-link" id="route-link-movilizarte" data-view-route="movilizarte" hidden>Ver ruta en el mapa</button>
-                  <span class="quote-disclaimer">Precio estimado según la distancia real de la ruta. Se confirma por WhatsApp.</span>
+                  <span class="quote-disclaimer">Precio estimado según la distancia real de la ruta y una tarifa que baja por tramos, con un mínimo de $<span class="min-fare-amount"></span>. Se confirma por WhatsApp. <a href="#faq">¿Cómo se calcula?</a></span>
                 </div>
                 <button type="button" class="btn btn-gold btn-wa btn-sm" id="wa-movilizarte">Revisar y confirmar</button>
               </div>
@@ -212,7 +212,7 @@
                   <span class="quote-eta" id="quote-aeropuerto-eta"></span>
                   <span class="quote-route-badge" id="quote-aeropuerto-badge"></span>
                   <button type="button" class="quote-route-link" id="route-link-aeropuerto" data-view-route="aeropuerto" hidden>Ver ruta en el mapa</button>
-                  <span class="quote-disclaimer">Precio estimado según la distancia real de la ruta. Se confirma por WhatsApp.</span>
+                  <span class="quote-disclaimer">Precio estimado según la distancia real de la ruta y una tarifa que baja por tramos, con un mínimo de $<span class="min-fare-amount"></span>. Se confirma por WhatsApp. <a href="#faq">¿Cómo se calcula?</a></span>
                 </div>
                 <button type="button" class="btn btn-gold btn-wa btn-sm" id="wa-aeropuerto">Revisar y confirmar</button>
               </div>
@@ -296,7 +296,7 @@
                   <span class="quote-eta" id="quote-encomienda-eta"></span>
                   <span class="quote-route-badge" id="quote-encomienda-badge"></span>
                   <button type="button" class="quote-route-link" id="route-link-encomienda" data-view-route="encomienda" hidden>Ver ruta en el mapa</button>
-                  <span class="quote-disclaimer">Precio estimado, sujeto a confirmación por WhatsApp.</span>
+                  <span class="quote-disclaimer">Precio estimado según el tamaño del paquete y la distancia de la ruta. Se confirma por WhatsApp. <a href="#faq">¿Cómo se calcula?</a></span>
                 </div>
                 <button type="button" class="btn btn-gold btn-wa btn-sm" id="wa-encomienda">Revisar y confirmar</button>
               </div>
@@ -330,7 +330,7 @@
                   <span class="quote-eta" id="quote-departamento-eta"></span>
                   <span class="quote-route-badge" id="quote-departamento-badge"></span>
                   <button type="button" class="quote-route-link" id="route-link-departamento" data-view-route="departamento" hidden>Ver ruta en el mapa</button>
-                  <span class="quote-disclaimer">Precio estimado según la distancia real de la ruta. Se confirma por WhatsApp.</span>
+                  <span class="quote-disclaimer">Precio estimado según la distancia real de la ruta y una tarifa que baja por tramos, con un mínimo de $<span class="min-fare-amount"></span>. Se confirma por WhatsApp. <a href="#faq">¿Cómo se calcula?</a></span>
                 </div>
                 <button type="button" class="btn btn-gold btn-wa btn-sm" id="wa-departamento">Revisar y confirmar</button>
               </div>
@@ -377,7 +377,7 @@
                   <span class="quote-eta" id="quote-turismo-eta"></span>
                   <span class="quote-route-badge" id="quote-turismo-badge"></span>
                   <button type="button" class="quote-route-link" id="route-link-turismo" data-view-route="turismo" hidden>Ver ruta en el mapa</button>
-                  <span class="quote-disclaimer">Precio estimado según la distancia real de la ruta. Se confirma por WhatsApp.</span>
+                  <span class="quote-disclaimer">Precio estimado según la distancia real de la ruta y una tarifa que baja por tramos, con un mínimo de $<span class="min-fare-amount"></span>. Se confirma por WhatsApp. <a href="#faq">¿Cómo se calcula?</a></span>
                 </div>
                 <button type="button" class="btn btn-gold btn-wa btn-sm" id="wa-turismo">Revisar y confirmar</button>
               </div>
@@ -519,12 +519,49 @@
     </div>
   </section>
 
-  <!-- ============ CONDUCTORES ============ -->
+  <!-- ============ CONDUCTORES / CONFIANZA ============
+       Cada afirmación de abajo es verificable con lo que el sitio ya hace
+       (foto+placa reales antes del viaje, política de cancelación mostrada
+       siempre, tiempo de respuesta de CONFIG.responseMinutes). A propósito
+       no hay frases tipo "100% seguro": nadie puede garantizar eso, y
+       prometerlo resta credibilidad en vez de sumarla. -->
   <section class="section-pad drivers-section">
     <div class="wrap">
       <span class="eyebrow">Confianza</span>
-      <h2 class="section-title">Conoce a quienes te van a llevar</h2>
+      <h2 class="section-title">Tu seguridad, antes de reservar — no después</h2>
       <p class="section-lede">Conductores reales, verificados por nuestro equipo — nada de fotos de banco de imágenes.</p>
+
+      <ul class="trust-bar">
+        <li class="trust-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M3 11h18M8 7v10"/><circle cx="7.5" cy="19.5" r="1.4" fill="currentColor" stroke="none"/><circle cx="16.5" cy="19.5" r="1.4" fill="currentColor" stroke="none"/></svg>
+          <div>
+            <strong>Foto y placa reales</strong>
+            <span>Antes de tu viaje te compartimos la foto exacta y la placa del vehículo que te va a recoger.</span>
+          </div>
+        </li>
+        <li class="trust-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>
+          <div>
+            <strong>Conductores verificados</strong>
+            <span>Revisados por nuestro equipo antes de unirse a la flota.</span>
+          </div>
+        </li>
+        <li class="trust-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 12a8 8 0 1 1 3 6.2"/><path d="M4 18v-4h4"/></svg>
+          <div>
+            <strong>Cancelación sin sorpresas</strong>
+            <span>Gratis hasta $<span id="trust-cancel-threshold"></span>. Después, un cargo fijo que te mostramos siempre antes de confirmar. <a href="#faq">Ver la política completa</a>.</span>
+          </div>
+        </li>
+        <li class="trust-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M17.5 14.4c-.3-.1-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.1-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.5-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5-.1-.1-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.4s1.1 2.8 1.2 3c.1.2 2.2 3.4 5.3 4.7.7.3 1.3.5 1.8.7.7.2 1.4.2 1.9.1.6-.1 1.7-.7 2-1.4.2-.7.2-1.2.1-1.4-.1-.1-.3-.2-.6-.3z" fill="currentColor" stroke="none"/><path d="M12 2C6.5 2 2 6.5 2 12c0 1.9.5 3.7 1.5 5.3L2 22l4.8-1.4C8.3 21.5 10.1 22 12 22c5.5 0 10-4.5 10-10S17.5 2 12 2z"/></svg>
+          <div>
+            <strong>Soporte directo, sin bot</strong>
+            <span class="response-badge-text">Respuesta estimada: ~5 min</span> por WhatsApp, con una persona real del otro lado.
+          </div>
+        </li>
+      </ul>
+
       <div id="drivers-grid" class="drivers-grid"></div>
     </div>
   </section>
@@ -969,8 +1006,8 @@
   </div>
 </div>
 
-<script src="js/data.js?v=32"></script>
-<script src="js/app.js?v=32"></script>
-<script src="js/enhance.js?v=32"></script>
+<script src="js/data.js?v=33"></script>
+<script src="js/app.js?v=33"></script>
+<script src="js/enhance.js?v=33"></script>
 </body>
 </html>
