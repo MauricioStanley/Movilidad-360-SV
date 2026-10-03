@@ -3,3 +3,6 @@
 # (video/tutorial.mp4 + el poster en img/brand/) sí se publica; esta carpeta
 # es material de trabajo, no algo que el sitio en vivo necesite servir.
 videos/
+
+# Evidencia local de las herramientas de diseño; no forma parte del sitio.
+.impeccable/

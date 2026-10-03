@@ -1,0 +1,78 @@
+<!-- ============ MAP MODAL (Leaflet, carga diferida) ============ -->
+<div class="map-modal" id="mapModal">
+  <div class="map-modal-card" role="dialog" aria-modal="true" aria-labelledby="mapModalTitle">
+    <div class="map-modal-head">
+      <h4 id="mapModalTitle">Elige tu destino en el mapa</h4>
+      <button class="map-modal-close" id="mapModalClose" aria-label="Cerrar mapa">&times;</button>
+    </div>
+    <div id="leaflet-map" aria-label="Mapa interactivo"></div>
+    <div class="map-modal-foot">
+      <p id="mapModalHint" role="status" aria-live="polite">Toca el mapa para colocar un pin en tu destino.</p>
+      <button type="button" class="btn btn-outline-ink btn-sm" id="mapModalCenter">Marcar el centro del mapa</button>
+      <button class="btn btn-gold btn-sm" id="mapModalConfirm" disabled>Usar este punto</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CONFIRMAR VIAJE ============ -->
+<div class="map-modal confirm-modal" id="confirmModal">
+  <div class="map-modal-card confirm-modal-card" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+    <div class="map-modal-head">
+      <h4 id="confirmModalTitle">Revisar solicitud</h4>
+      <button class="map-modal-close" id="confirmModalClose" aria-label="Cerrar">&times;</button>
+    </div>
+    <div class="confirm-modal-body">
+<p id="confirmError" class="inline-error" role="alert" tabindex="-1" hidden></p>
+      <div id="confirmRows" class="confirm-rows"></div>
+      <section class="request-planning" aria-labelledby="planHeading">
+        <h3 id="planHeading">¿Cuándo lo necesitas?</h3>
+        <div class="pill-toggle" role="group" aria-label="Momento de la recogida"><button type="button" class="pill-option selected" data-plan-mode="now" aria-pressed="true">Ahora</button><button type="button" class="pill-option" data-plan-mode="later" aria-pressed="false">Programar</button></div>
+        <div id="planSchedule" class="form-grid two-col" hidden><div><label class="field-label" for="planDate">Fecha de recogida</label><input id="planDate" type="date" class="field-input"></div><div><label class="field-label" for="planTime">Hora de recogida</label><input id="planTime" type="time" class="field-input"></div></div>
+        <p class="field-hint" id="planSummary" role="status">Ahora, sujeto a disponibilidad. El equipo debe aceptar la solicitud.</p>
+        <details id="planTravelExtras" class="request-details"><summary>Equipaje y vuelo <span>Opcional</span></summary><label class="field-label" for="planBags">Cantidad de maletas</label><input id="planBags" type="number" min="0" max="20" step="1" inputmode="numeric" class="field-input" placeholder="Sin especificar"><div id="planFlightField" hidden><label class="field-label" for="planFlight">Número de vuelo</label><input id="planFlight" type="text" maxlength="12" class="field-input" placeholder="Ej. AV123" autocomplete="off" autocapitalize="characters"></div><p class="field-hint">La hora solicitada es de recogida, no de despegue. El equipo confirma espacio, disponibilidad y cualquier ajuste antes de aceptar.</p></details>
+      </section>
+
+      <div class="confirm-recipient">
+        <span class="field-label">¿El viaje es para ti o para alguien más?</span>
+        <div class="pill-toggle" id="confirmRecipientPills" role="group" aria-label="¿Para quién es el viaje?">
+          <button type="button" class="pill-option selected" data-recipient="self" aria-pressed="true">Para mí</button>
+          <button type="button" class="pill-option" data-recipient="other" aria-pressed="false">Para alguien más</button>
+        </div>
+        <div class="confirm-recipient-fields" id="confirmRecipientFields" hidden>
+          <label class="field-label" for="confirmRecipientName">Nombre de la persona</label>
+          <input maxlength="160" type="text" id="confirmRecipientName" class="field-input" placeholder="Ej. Papá — Juan Pérez" autocomplete="off">
+          <label class="field-label" for="confirmRecipientPhone">Teléfono para coordinar con esa persona</label>
+          <input maxlength="25" type="tel" inputmode="tel" id="confirmRecipientPhone" class="field-input" placeholder="Ej. 7000-0000" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="confirm-payment">
+        <span class="field-label" id="confirm-payment-label">Método de pago</span>
+        <div class="pill-toggle" id="confirmPaymentPills" role="group" aria-labelledby="confirm-payment-label"></div>
+      </div>
+
+      <div class="confirm-bank-accounts" id="confirmBankAccounts" hidden></div>
+<p class="field-hint" id="confirmTransferNotice" hidden>Antes de transferir, confirma el importe final y el titular de la cuenta con el equipo. La web no procesa pagos.</p>
+
+      <div class="confirm-negotiate-panel" id="confirmNegotiatePanel" hidden>
+        <p class="confirm-negotiate-note">El precio mostrado es un estimado y se puede negociar hasta cierto punto: se toman en cuenta el tráfico, la hora del viaje, si el vehículo lleva aire acondicionado, el clima, entre otros factores. Escribe cuánto te gustaría pagar y lo revisamos contigo por WhatsApp.</p>
+        <label class="field-label" for="confirmNegotiatePrice">¿Cuánto te gustaría pagar? (USD)</label>
+        <input type="number" min="0" step="0.5" inputmode="decimal" id="confirmNegotiatePrice" class="field-input" placeholder="Ej. 5.00">
+      </div>
+
+      <details class="request-details" id="confirmFrequentNote"><summary>Ya soy cliente frecuente</summary><p>Consulta por una tarifa de cliente frecuente al negociar. El equipo revisará tu caso; no se aplica un descuento automático.</p></details>
+
+      <details class="request-details" id="saveRoutePanel"><summary>Guardar esta ruta para otra ocasión</summary><label class="field-label" for="saveRouteName">Un nombre que recuerdes</label><input id="saveRouteName" type="text" maxlength="48" class="field-input" placeholder="Ej. Casa al aeropuerto"><label class="save-consent"><input id="saveRouteConsent" type="checkbox"> Guardar estos puntos en este dispositivo durante 90 días.</label><p class="field-hint">No guardamos teléfonos, cuentas bancarias ni la información de otras personas. Evita guardar direcciones en un equipo compartido.</p><button id="saveRouteButton" type="button" class="btn btn-outline-ink btn-sm">Guardar ruta</button><p id="saveRouteStatus" role="status"></p></details>
+
+      <p class="confirm-cancellation" id="confirmCancellation"></p>
+      <p class="confirm-insurance">Si ocurre un imprevisto, coordinaremos contigo una alternativa segura. Confirma disponibilidad y condiciones con el equipo antes de viajar.</p>
+    </div>
+    <div class="map-modal-foot confirm-modal-foot">
+      <div class="confirm-foot-row">
+        <button class="btn btn-outline-ink btn-sm" id="confirmEditBtn">Editar</button>
+        <button type="button" class="btn btn-outline-ink btn-sm" id="confirmNegotiateToggle" aria-expanded="false" aria-controls="confirmNegotiatePanel">Proponer otro precio</button>
+      </div>
+      <button class="btn btn-gold btn-sm btn-wa" id="confirmSendBtn">Continuar por WhatsApp</button>
+    </div>
+  </div>
+</div>

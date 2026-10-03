@@ -1,0 +1,110 @@
+[
+  {
+    "output": "index.html",
+    "key": "home",
+    "title": "Transporte privado en El Salvador | Movilidad 360 SV",
+    "description": "Cotiza viajes, traslados al aeropuerto y encomiendas en El Salvador. Revisa tu ruta y acuerda el precio por WhatsApp.",
+    "canonical": "https://movilidad360sv.com/",
+    "bodyClass": "preview-home",
+    "modals": null
+  },
+  {
+    "output": "cotizar/index.html",
+    "key": "cotizar",
+    "title": "Cotizar un viaje | Movilidad 360 SV",
+    "description": "Elige origen y destino, revisa distancia y precio estimados y prepara tu solicitud por WhatsApp.",
+    "canonical": "https://movilidad360sv.com/cotizar/",
+    "bodyClass": "preview-quote",
+    "modals": "cotizar-modals.html"
+  },
+  {
+    "output": "flota/index.html",
+    "key": "flota",
+    "title": "Nuestra flota y conductores | Movilidad 360 SV",
+    "description": "Conoce los vehículos y conductores de Movilidad 360 SV. La asignación y disponibilidad se confirman por WhatsApp.",
+    "canonical": "https://movilidad360sv.com/flota/",
+    "bodyClass": "preview-fleet",
+    "modals": "flota-modals.html"
+  },
+  {
+    "output": "trabaja-con-nosotros/index.html",
+    "key": "trabaja-con-nosotros",
+    "title": "Trabaja con nosotros | Movilidad 360 SV",
+    "description": "Consulta condiciones para trabajar con Movilidad 360 SV y envía tu solicitud de colaboración por WhatsApp.",
+    "canonical": "https://movilidad360sv.com/trabaja-con-nosotros/",
+    "bodyClass": "preview-join",
+    "modals": null
+  },
+  {
+    "output": "nosotros/index.html",
+    "key": "nosotros",
+    "title": "Sobre nosotros | Movilidad 360 SV",
+    "description": "Conoce a Movilidad 360 SV y nuestros servicios de transporte, encomiendas y turismo en El Salvador.",
+    "canonical": "https://movilidad360sv.com/nosotros/",
+    "bodyClass": "preview-about",
+    "modals": null
+  },
+  {
+    "output": "ayuda/index.html",
+    "key": "ayuda",
+    "title": "Ayuda y preguntas frecuentes | Movilidad 360 SV",
+    "description": "Cómo cotizar, negociar tu viaje, pagar y solicitar transporte con Movilidad 360 SV. Consulta condiciones y asistencia.",
+    "canonical": "https://movilidad360sv.com/ayuda/",
+    "bodyClass": "preview-help",
+    "modals": null
+  },
+  {
+    "output": "viajes-locales/index.html",
+    "key": "viajes-locales",
+    "title": "Viajes locales en San Salvador | Movilidad 360 SV",
+    "description": "Muévete por el área metropolitana con una referencia de precio antes de coordinar tu viaje.",
+    "canonical": "https://movilidad360sv.com/viajes-locales/",
+    "bodyClass": "preview-service",
+    "modals": null
+  },
+  {
+    "output": "transporte-aeropuerto/index.html",
+    "key": "transporte-aeropuerto",
+    "title": "Traslados al aeropuerto en El Salvador | Movilidad 360 SV",
+    "description": "Prepara un traslado al Aeropuerto Internacional de El Salvador o al Aeropuerto de Ilopango.",
+    "canonical": "https://movilidad360sv.com/transporte-aeropuerto/",
+    "bodyClass": "preview-service",
+    "modals": null
+  },
+  {
+    "output": "encomiendas/index.html",
+    "key": "encomiendas",
+    "title": "Encomiendas y entregas en El Salvador | Movilidad 360 SV",
+    "description": "Cotiza la recolección y entrega de un paquete con puntos de salida y llegada definidos.",
+    "canonical": "https://movilidad360sv.com/encomiendas/",
+    "bodyClass": "preview-service",
+    "modals": null
+  },
+  {
+    "output": "viajes-interdepartamentales/index.html",
+    "key": "viajes-interdepartamentales",
+    "title": "Viajes entre ciudades de El Salvador | Movilidad 360 SV",
+    "description": "Solicita un traslado a un punto concreto dentro de los departamentos de El Salvador.",
+    "canonical": "https://movilidad360sv.com/viajes-interdepartamentales/",
+    "bodyClass": "preview-service",
+    "modals": null
+  },
+  {
+    "output": "transporte-turistico/index.html",
+    "key": "transporte-turistico",
+    "title": "Transporte turístico en El Salvador | Movilidad 360 SV",
+    "description": "Explora destinos y recorridos sugeridos como la Ruta de las Flores o las playas del Bálsamo.",
+    "canonical": "https://movilidad360sv.com/transporte-turistico/",
+    "bodyClass": "preview-service",
+    "modals": null
+  },
+  {
+    "output": "mudanzas/index.html",
+    "key": "mudanzas",
+    "title": "Mudanzas pequeñas y medianas | Movilidad 360 SV",
+    "description": "Comparte los detalles de tu traslado para recibir una cotización del equipo de Movilidad 360 SV.",
+    "canonical": "https://movilidad360sv.com/mudanzas/",
+    "bodyClass": "preview-service",
+    "modals": null
+  }
+]
