@@ -1,0 +1,9 @@
+[
+  {"id":"movilizarte","name":"Viaje local","description":"De tu punto de salida a tu destino.","image":"local","group":"Viajar"},
+  {"id":"aeropuerto","name":"Aeropuerto","description":"Te llevamos o te recogemos.","image":"aeropuerto","group":"Viajar"},
+  {"id":"departamento","name":"Entre ciudades","description":"Conecta destinos de El Salvador.","image":"ciudades","group":"Viajar"},
+  {"id":"turismo","name":"Turismo","description":"Una ruta, varios lugares por descubrir.","image":"turismo","group":"Viajar"},
+  {"id":"encomienda","name":"Encomienda","description":"Recogemos y entregamos tu paquete.","image":"encomienda","group":"Enviar o trasladar"},
+  {"id":"mudanza","name":"Mudanza","description":"Cuéntanos qué necesitas trasladar.","image":"mudanza","group":"Enviar o trasladar"},
+  {"id":"tarifafija","name":"Tarifas desde Assistenza","description":"Precios establecidos desde Antiguo Cuscatlán.","image":"tarifas","group":"Una salida específica"}
+]

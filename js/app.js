@@ -89,7 +89,7 @@
 
   // Factor de corrección de línea recta -> carretera (curvas, cuadras, etc.).
   // Se usa tanto en el respaldo de fetchRoute() como en los precios "desde"
-  // que se muestran ANTES de calcular la ruta real, para que ambos números
+  // que se muestran ANTES de calcular la ruta calculada, para que ambos números
   // se acerquen entre sí (antes, el "desde" salía sistemáticamente más bajo
   // que el precio final, porque solo fetchRoute() aplicaba esta corrección).
   const ROAD_CURVE_FACTOR = 1.35;
@@ -111,17 +111,7 @@
   // cobra la tarifa del tramo en el que cae, no la tarifa del tramo final
   // a toda la distancia — igual que una tabla de impuestos por escalones.
   function tieredDistancePrice(distanceKm) {
-    let remaining = distanceKm;
-    let total = 0;
-    let lowerBound = 0;
-    for (const tier of CONFIG.distanceTiers) {
-      if (remaining <= 0) break;
-      const kmInTier = Math.min(remaining, tier.upTo - lowerBound);
-      total += kmInTier * tier.rate;
-      remaining -= kmInTier;
-      lowerBound = tier.upTo;
-    }
-    return total;
+    return M360Core.distancePrice(distanceKm, CONFIG);
   }
 
   function estimatePrice(distanceKm, pets) {
@@ -130,8 +120,7 @@
     // destino con las mismas coordenadas) podía cotizar $0.00 — un precio
     // real que le llegaba al equipo por WhatsApp. CONFIG.minFareUsd es un
     // valor de partida razonable; ajústalo si el negocio quiere otro piso.
-    const distancePrice = Math.max(tieredDistancePrice(distanceKm), CONFIG.minFareUsd);
-    return distancePrice + (pets ? CONFIG.petFee : 0);
+    return M360Core.breakdown(distanceKm, pets, CONFIG).total;
   }
 
   function formatMoney(n) {
@@ -170,25 +159,31 @@
       script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
       script.integrity = "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=";
       script.crossOrigin = "";
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error("No se pudo cargar el mapa."));
+      const timer = setTimeout(() => script.onerror(), 10000);
+      script.onload = () => { clearTimeout(timer); resolve(); };
+      script.onerror = () => {
+        clearTimeout(timer);
+        script.remove(); cssLink.remove(); leafletLoadingPromise = null;
+        reject(new Error("No se pudo cargar el mapa. Comprueba tu conexión y vuelve a abrirlo."));
+      };
       document.body.appendChild(script);
     });
     return leafletLoadingPromise;
   }
 
-  /* ---------------- Ruteo real por carretera (OSRM) ----------------
+  /* ---------------- Ruteo calculada por carretera (OSRM) ----------------
      OSRM (router.project-osrm.org) es un servicio público y gratuito de
      ruteo basado en OpenStreetMap, sin necesidad de API key. Si no
      responde a tiempo (o el navegador está sin internet), se usa un
      respaldo en línea recta con un factor de corrección, y se marca la
      cotización como "aproximada" para que quede claro que no es la
-     distancia real de manejo. */
+     distancia calculada de manejo. */
   const routeCache = new Map();
 
   async function fetchRoute(origin, dest) {
+    if (!M360Core.validPoint(origin) || !M360Core.validPoint(dest)) throw new Error("Confirma ambos puntos antes de calcular.");
     const key = `${origin.lat.toFixed(5)},${origin.lng.toFixed(5)}|${dest.lat.toFixed(5)},${dest.lng.toFixed(5)}`;
-    if (routeCache.has(key)) return routeCache.get(key);
+    if (routeCache.has(key) && Date.now() - routeCache.get(key).calculatedAt < 10 * 60 * 1000) return routeCache.get(key);
 
     const url =
       `https://router.project-osrm.org/route/v1/driving/` +
@@ -200,17 +195,22 @@
 
     try {
       const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
       if (!res.ok) throw new Error("routing-http-error");
       const data = await res.json();
       const route = data.routes && data.routes[0];
-      if (!route) throw new Error("no-route");
+      if (data.code !== 'Ok' || !route || !Number.isFinite(route.distance) || route.distance < 0 ||
+          !Number.isFinite(route.duration) || route.duration < 0 || !Array.isArray(route.geometry?.coordinates) ||
+          route.geometry.coordinates.length < 2 || route.geometry.coordinates.some(p=>!M360Core.validPoint({lat:p[1],lng:p[0]}))) throw new Error("invalid-route");
+      if (data.waypoints?.some(p=>!Number.isFinite(p.distance) || p.distance > 500)) throw new Error("road-access-too-far");
+      clearTimeout(timeoutId);
       const result = {
         distanceKm: route.distance / 1000,
         minutes: Math.max(5, Math.round(route.duration / 60) + 6),
         coords: route.geometry.coordinates.map(([lng, lat]) => [lat, lng]),
         real: true,
+        calculatedAt: Date.now(),
       };
+      if (routeCache.size >= 60) routeCache.delete(routeCache.keys().next().value);
       routeCache.set(key, result);
       return result;
     } catch (err) {
@@ -222,6 +222,7 @@
         minutes: estimateMinutes(distanceKm),
         coords: null,
         real: false,
+        calculatedAt: Date.now(),
       };
     }
   }
@@ -259,85 +260,56 @@
   // Convierte coordenadas en una referencia legible (colonia/calle) usando
   // Nominatim (OpenStreetMap), gratuito y sin API key. Es un "mejor esfuerzo":
   // si falla o tarda, simplemente no se agrega el nombre y se sigue usando
-  // el enlace de Google Maps como punto de referencia.
+  // el enlace de Waze como punto de referencia.
   async function reverseGeocode(lat, lng) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
-    try {
-      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1`;
-      const res = await fetch(url, { signal: controller.signal, headers: { Accept: "application/json" } });
-      clearTimeout(timeoutId);
-      if (!res.ok) return null;
-      const data = await res.json();
-      const a = data.address || {};
-      const place = a.neighbourhood || a.suburb || a.road || a.village || a.town || a.city_district;
-      const city = a.city || a.town || a.municipality;
-      const parts = [place, place !== city ? city : null].filter(Boolean);
-      return parts.length ? sanitizeWaText(parts.join(", ")) : null;
-    } catch (err) {
-      clearTimeout(timeoutId);
-      return null;
-    }
+    const name = await M360Geo.reverse({ lat, lng });
+    return name ? sanitizeWaText(name) : null;
   }
 
   // Búsqueda de direcciones reales (Nominatim/OpenStreetMap) — respaldo
   // cuando el lugar que el cliente escribe no está en nuestra lista
   // curada de sitios populares. Así puede pedir un viaje a cualquier
   // dirección real de El Salvador aunque no sepa marcarla en el mapa.
-  async function geocodeSearch(query) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 6000);
-    try {
-      const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=sv&limit=5&q=${encodeURIComponent(query)}`;
-      const res = await fetch(url, { signal: controller.signal, headers: { Accept: "application/json" } });
-      clearTimeout(timeoutId);
-      if (!res.ok) return [];
-      const data = await res.json();
-      return data
-        .map((d) => {
-          const parts = d.display_name.split(",").map((s) => s.trim());
-          return {
-            name: sanitizeWaText(parts.slice(0, 2).join(", ")),
-            fullName: sanitizeWaText(d.display_name),
-            lat: parseFloat(d.lat),
-            lng: parseFloat(d.lon),
-          };
-        })
-        // Descarta resultados con coordenadas inválidas: un NaN aquí se
-        // propaga a haversineKm -> precio "$NaN" / tiempo "~NaNh".
-        .filter((r) => Number.isFinite(r.lat) && Number.isFinite(r.lng));
-    } catch (err) {
-      clearTimeout(timeoutId);
-      return [];
-    }
+  async function geocodeSearch(query, options) {
+    return (await M360Geo.search(query, options)).map(p=>({ ...p, name:sanitizeWaText(p.name), fullName:sanitizeWaText(p.fullName) }));
   }
 
+  let originGeneration = 0;
   function requestGeolocation(cb) {
+    const generation = ++originGeneration;
     const statusEl = $("#geo-status");
     const bannerEl = $(".geo-banner");
     if (!navigator.geolocation) {
-      if (statusEl) statusEl.textContent = "Tu navegador no permite compartir ubicación. Usando San Salvador (Centro) como referencia.";
+      if (statusEl) statusEl.textContent = "Tu navegador no permite compartir ubicación. Busca tu punto de salida.";
       cb(false);
       return;
     }
     if (statusEl) statusEl.textContent = "Buscando tu ubicación…";
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (generation !== originGeneration) return;
         userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         userLocationPlaceName = null;
         originSource = "gps";
-        if (statusEl) statusEl.textContent = "Ubicación activada ✓ Todas las cotizaciones se calculan desde tu posición actual.";
+        if (statusEl) statusEl.textContent = "Ubicación confirmada. Este será el punto de salida de los viajes de pasajeros.";
         if (bannerEl) bannerEl.classList.add("located");
         const originInput = $("#origin-search-input");
         if (originInput) originInput.value = "";
         cb(true);
         reverseGeocode(userLocation.lat, userLocation.lng).then((name) => {
-          if (name) userLocationPlaceName = name;
+          if (name && generation === originGeneration) {
+            userLocationPlaceName = name;
+            if (originInput) originInput.value = name;
+            if (statusEl) statusEl.textContent = `Salida confirmada: ${name}.`;
+            refreshAllQuotesForNewOrigin(); persistAll();
+          }
         });
+        persistAll();
       },
       () => {
-        if (statusEl) statusEl.textContent = "No pudimos acceder a tu ubicación. Usando San Salvador (Centro) como referencia — puedes intentar de nuevo.";
-        if (bannerEl) bannerEl.classList.remove("located");
+        if (generation !== originGeneration) return;
+        if (statusEl) statusEl.textContent = userLocation ? `No se pudo actualizar el GPS. Conservamos tu salida: ${originLabel()}.` : "No pudimos acceder al GPS. Busca tu punto de salida o vuelve a intentarlo.";
+        if (bannerEl) bannerEl.classList.toggle("located", !!userLocation);
         cb(false);
       },
       { timeout: 8000, maximumAge: 60000 }
@@ -348,6 +320,8 @@
   // busca el destino), no solo con la ubicación GPS del celular — útil
   // cuando el viaje sale de otro lugar (ej. la casa de otra persona).
   function selectOriginFromSearch(place) {
+    if (!M360Core.validPoint(place)) return;
+    originGeneration++;
     userLocation = { lat: place.lat, lng: place.lng };
     userLocationPlaceName = place.name;
     originSource = "search";
@@ -356,39 +330,74 @@
     const list = $("#origin-suggestions");
     if (list) list.innerHTML = "";
     const statusEl = $("#geo-status");
-    if (statusEl) statusEl.textContent = `Origen elegido: ${place.name}. Todas las cotizaciones se calculan desde ahí.`;
+    if (statusEl) statusEl.textContent = `Origen elegido: ${place.name}. Salida para viajes de pasajeros; tarifas fijas, encomiendas y mudanzas usan sus propios puntos.`;
     const bannerEl = $(".geo-banner");
     if (bannerEl) bannerEl.classList.add("located");
     refreshAllQuotesForNewOrigin();
     persistAll();
   }
 
-  let originSearchToken = 0;
-  function wireOriginSearch() {
+    function wireOriginSearch() {
     const input = $("#origin-search-input");
     const list = $("#origin-suggestions");
     if (!input || !list) return;
-    input.addEventListener(
-      "input",
-      debounce(() => {
-        const query = input.value.trim();
-        originSearchToken++;
-        const token = originSearchToken;
-        if (query.length < 3) {
-          list.innerHTML = "";
-          return;
-        }
-        list.innerHTML = `<p class="suggestion-loading">Buscando "${escapeHtml(query)}"…</p>`;
-        geocodeSearch(query + ", El Salvador").then((results) => {
-          if (token !== originSearchToken) return; // el cliente ya escribió otra cosa
-          if (!results.length) {
-            list.innerHTML = `<p class="suggestion-loading">No encontramos esa dirección.</p>`;
-            return;
-          }
-          renderSuggestionItems(list, results, null, selectOriginFromSearch);
-        });
-      }, 400)
-    );
+    input.addEventListener('input', () => {
+      originGeneration++;
+      userLocation = null; userLocationPlaceName = null; originSource = null;
+      $('.geo-banner').classList.remove('located');
+      $('#geo-status').textContent = 'Confirma un resultado para usarlo como salida.';
+      TRAVEL_PREFIXES.filter(p=>p!=='tarifafija').forEach(p=>invalidateQuote(p, 'Confirma el punto de salida.'));
+      persistAll();
+    });
+    wireExplicitSearch(input, list, selectOriginFromSearch);
+  }
+
+  // Typing only filters local data. Network search always requires a click/Enter.
+  function wireExplicitSearch(input, list, onSelect, querySuffix = '') {
+    if (!input || !list || input.dataset.explicitSearch) return;
+    input.dataset.explicitSearch = 'true'; input.maxLength = 180;
+    list.setAttribute('aria-live', 'polite');
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'btn btn-outline-ink btn-sm address-search-button';
+    button.textContent = 'Buscar dirección';
+    button.setAttribute('aria-label', 'Buscar dirección: ' + (input.labels?.[0]?.textContent || input.placeholder || 'lugar'));
+    input.insertAdjacentElement('afterend', button);
+    let token = 0, controller = null;
+    const choose = place => { token++; controller?.abort(); button.disabled = false; onSelect(place); };
+    const local = () => {
+      controller?.abort();
+      token++; button.disabled = false;
+      const q = norm(input.value);
+      const places = [...LOCAL_PLACES, ...TOURIST_PLACES, ...AIRPORTS];
+      const seen = new Set();
+      const matches = q ? places.filter(p=>norm(p.name).includes(q) && !seen.has(p.name) && seen.add(p.name)).slice(0,5) : [];
+      if (matches.length) renderSuggestionItems(list, matches, 'El Salvador · confirma este punto', choose);
+      else list.innerHTML = '<p class="field-hint">Escribe un lugar y pulsa Buscar dirección. También puedes usar el mapa.</p>';
+    };
+    const run = async () => {
+      if (button.disabled) return;
+      const query = input.value.trim();
+      if (query.length < 3) { list.textContent = 'Escribe al menos tres caracteres.'; input.focus(); return; }
+      const request = ++token; button.disabled = true;
+      controller?.abort(); controller = new AbortController();
+      list.textContent = 'Buscando dirección…';
+      trackEvent('address_search', { field: input.id });
+      try {
+        const results = await geocodeSearch(query + querySuffix + ', El Salvador', { signal: controller.signal });
+        if (request !== token) return;
+        if (results.length) renderSuggestionItems(list, results, null, choose);
+        else list.innerHTML = '<p class="field-hint">No encontramos ese lugar. Añade el municipio o marca su ubicación en el mapa.</p>';
+        const attribution = document.createElement('a');
+        attribution.href = 'https://www.openstreetmap.org/copyright'; attribution.target = '_blank'; attribution.rel = 'noopener';
+        attribution.className = 'field-hint'; attribution.textContent = 'Datos © OpenStreetMap'; list.appendChild(attribution);
+      } catch (err) {
+        if (request === token && err.code !== 'cancelled') list.textContent = err.message || 'No pudimos buscar. Revisa tu conexión y vuelve a intentarlo.';
+        if (err.code !== 'cancelled') trackEvent('address_search_error', { reason: err.code || 'unknown' });
+      } finally { if (request === token) button.disabled = false; }
+    };
+    input.addEventListener('input', local);
+    input.addEventListener('keydown', e=>{ if (e.key === 'Enter') { e.preventDefault(); run(); } });
+    button.addEventListener('click', run);
   }
 
   /* ---------------- Pasajeros y mascotas ----------------
@@ -419,6 +428,7 @@
         <button type="button" class="switch" id="pets-${prefix}" aria-pressed="false" aria-label="¿Llevas mascota?"></button>
       </div>
       <p class="pets-fee-warning" id="pets-fee-warning-${prefix}" hidden>Llevar mascota tiene un recargo de +${formatMoney(CONFIG.petFee)}.</p>
+      <p class="field-hint" id="capacity-${prefix}" hidden>Para más de 4 pasajeros, el equipo debe confirmar capacidad y vehículo antes de aceptar el viaje.</p>
     `;
     panel.insertBefore(row, quoteBox);
 
@@ -429,6 +439,8 @@
         const next = Math.min(8, Math.max(1, paxPetsState[prefix].pax + dir));
         paxPetsState[prefix].pax = next;
         valueEl.textContent = String(next);
+        const capacity = $(`#capacity-${prefix}`);
+        if (capacity) capacity.hidden = next <= 4;
         persistAll();
       });
     });
@@ -466,7 +478,11 @@
   }
 
   function applyPaxPetsUi(prefix, pax, pets) {
+    pax = Math.min(8, Math.max(1, Number.isFinite(pax) ? Math.trunc(pax) : 1));
+    pets = !!pets;
     paxPetsState[prefix] = { pax, pets };
+    const capacity = $(`#capacity-${prefix}`);
+    if (capacity) capacity.hidden = pax <= 4;
     const valueEl = $(`#pax-${prefix}`);
     if (valueEl) valueEl.textContent = String(pax);
     const petsBtn = $(`#pets-${prefix}`);
@@ -496,9 +512,31 @@
     return quoteGeneration[prefix] === gen;
   }
 
+  function invalidateQuote(prefix, message = 'Confirma los puntos del recorrido para calcular.') {
+    nextQuoteGeneration(prefix);
+    lastQuoteResult[prefix] = null; quoteRouteData[prefix] = null;
+    const box = $(`#quote-${prefix}`), button = $(`#wa-${prefix}`);
+    if (box) box.classList.remove('show');
+    if (button) { button.disabled = true; button.onclick = null; button.setAttribute('aria-disabled','true'); }
+    const route = $(`#route-link-${prefix}`); if (route) route.hidden = true;
+    const eta = $(`#quote-${prefix}-eta`); if (eta) eta.textContent = message;
+    const retry = $(`#quote-${prefix} .route-retry`); if (retry) retry.hidden = true;
+  }
+
+  function requireOrigin(prefix) {
+    if (M360Core.validPoint(userLocation)) return true;
+    invalidateQuote(prefix);
+    const box = $(`#quote-${prefix}`); if (box) box.classList.add('show');
+    $(`#quote-${prefix}-price`).textContent = '—';
+    $(`#quote-${prefix}-route`).textContent = 'Falta el punto de salida';
+    $(`#quote-${prefix}-eta`).textContent = 'Busca una dirección de salida o usa tu ubicación para calcular este viaje.';
+    $('#origin-search-input')?.focus();
+    return false;
+  }
+
   const SERVICE_NAMES = {
     movilizarte: "viaje local",
-    aeropuerto: "traslado al aeropuerto",
+    aeropuerto: "traslado de aeropuerto",
     departamento: "viaje interdepartamental",
     turismo: "viaje turístico",
   };
@@ -507,34 +545,33 @@
   // esta cotización — se advierte SIEMPRE al solicitar el viaje.
   function cancellationLine(price) {
     if (price == null) {
-      return "La política de cancelación se confirma junto con tu cotización personalizada.";
+      return "Antes de aceptar el viaje confirmaremos el importe y las condiciones de cancelación. Abrir WhatsApp no crea una reserva.";
     }
     if (price > CONFIG.cancellation.freeThresholdUsd) {
       const fee = (price * CONFIG.cancellation.feePercent) / 100;
-      return `Cancelación: se cobra ${CONFIG.cancellation.feePercent}% (${formatMoney(fee)}) por ser mayor a ${formatMoney(CONFIG.cancellation.freeThresholdUsd)}.`;
+      return `Una vez aceptada la reserva: si el precio acordado supera ${formatMoney(CONFIG.cancellation.freeThresholdUsd)}, la cancelación es del ${CONFIG.cancellation.feePercent}%. Con este estimado serían ${formatMoney(fee)}; se recalcula si cambia el precio. Abrir WhatsApp no confirma una reserva.`;
     }
-    return `Cancelación: sin cargo (viaje de ${formatMoney(price)}, no supera ${formatMoney(CONFIG.cancellation.freeThresholdUsd)}).`;
+    return `Cancelación sin cargo si el precio finalmente acordado no supera ${formatMoney(CONFIG.cancellation.freeThresholdUsd)}. Si lo supera, aplica ${CONFIG.cancellation.feePercent}%. Abrir WhatsApp no confirma una reserva.`;
   }
 
-  function buildQuoteMessage(prefix, { originName, destName, price, minutes, distanceKm, extraLine, real }, paymentMethod) {
-    const { passengers, pets } = paxPetsFor(prefix);
+  function buildQuoteMessage(prefix, { originName, destName, price, minutes, distanceKm, extraLine, real, passengers, pets, routeSnapshot }, paymentMethod) {
     // Dos tramos en Waze en vez de un link de Google Maps: primero la ruta
     // del conductor hacia el punto de recogida (se abre estando él en su
     // ubicación real), y luego la ruta de la recogida hacia el destino del
     // cliente (se abre ya estando ahí, así que también coincide).
-    const wazeToPickup = originWazeLink();
-    const routeData = quoteRouteData[prefix];
+    const routeData = routeSnapshot;
+    const wazeToPickup = routeData?.originLatLng ? wazeLink(...routeData.originLatLng) : null;
     const wazeToDest = routeData && routeData.destLatLng ? wazeLink(routeData.destLatLng[0], routeData.destLatLng[1]) : null;
     return (
       `Hola *MOVILIDAD 360 SV*\n\n` +
       `Quiero cotizar un *${SERVICE_NAMES[prefix]}*:\n` +
       `*Desde:* ${originName}\n` +
-      (wazeToPickup ? `Ruta en Waze hacia mí (recogida): ${wazeToPickup}\n` : "") +
+      (wazeToPickup ? `Navegar al punto de recogida: ${wazeToPickup}\n` : "") +
       `*Hasta:* ${destName}\n` +
-      (wazeToDest ? `Ruta en Waze de la recogida al destino: ${wazeToDest}\n` : "") +
-      `*Distancia* ${real ? "real por carretera" : "aproximada"}: ${distanceKm.toFixed(1)} km\n` +
+      (routeData?.stops?.length ? routeData.stops.map((p,i)=>`Parada ${i+1}: ${p.name} — ${pointWazeLink(p)}`).join('\n')+'\n' : (wazeToDest ? `Navegar al destino después de recoger: ${wazeToDest}\n` : "")) +
+      `*Distancia* ${real ? "calculada por carretera" : "aproximada, pendiente de revisión"}: ${distanceKm.toFixed(1)} km\n` +
       `*Precio estimado:* ${formatMoney(price)}\n` +
-      `⏱️ Tiempo estimado: ${formatEta(minutes)}\n` +
+      `Duración estimada de conducción (sin tráfico en vivo): ${formatEta(minutes)}\n` +
       `*Pasajeros:* ${passengers}\n` +
       `*Mascota:* ${pets ? `Sí (+${formatMoney(CONFIG.petFee)})` : "No"}\n` +
       `*Método de pago:* ${paymentMethod}` +
@@ -545,14 +582,17 @@
   }
 
   function showQuoteLoading(prefix, originName, destName) {
+    const retry = $(`#quote-${prefix} .route-retry`); if (retry) retry.hidden = true;
     $(`#quote-${prefix}-route`).textContent = `${originName} → ${destName}`;
     $(`#quote-${prefix}-price`).textContent = "…";
-    $(`#quote-${prefix}-eta`).textContent = "🧭 Calculando ruta real por carretera…";
+    $(`#quote-${prefix}-eta`).textContent = "🧭 Calculando ruta por carretera…";
     const badge = $(`#quote-${prefix}-badge`);
     if (badge) badge.textContent = "";
     $(`#quote-${prefix}`).classList.add("show");
     const waBtn = $(`#wa-${prefix}`);
     if (waBtn) {
+      waBtn.disabled = true;
+      waBtn.onclick = null;
       waBtn.setAttribute("aria-disabled", "true");
       waBtn.classList.add("is-loading");
     }
@@ -562,6 +602,10 @@
 
   function showQuote(prefix, data) {
     const { originName, destName, price, minutes, distanceKm, real } = data;
+    if (!real) {
+      showManualQuote(prefix, originName, destName, data.extraLine ? [{ label: 'Recorrido', value: data.extraLine }] : []);
+      return;
+    }
     // Red de seguridad: si llega una cotización con distancia ~0 (origen y
     // destino en el mismo punto), incluso restaurada de una versión vieja
     // guardada en el navegador, no mostramos "0.0 km" ni una ruta rota.
@@ -571,19 +615,23 @@
     }
     $(`#quote-${prefix}-route`).textContent = `${originName} → ${destName} · ${distanceKm.toFixed(1)} km`;
     $(`#quote-${prefix}-price`).textContent = formatMoney(price);
-    $(`#quote-${prefix}-eta`).textContent = `Tiempo estimado: ${formatEta(minutes)}`;
+    $(`#quote-${prefix}-eta`).textContent = `Trayecto estimado (sin tráfico en vivo): ${formatEta(minutes)}`;
     $(`#quote-${prefix}`).classList.add("show");
+    const disclaimer = $(`#quote-${prefix} .quote-disclaimer`);
+    if (disclaimer) disclaimer.hidden = false;
 
     const badge = $(`#quote-${prefix}-badge`);
     if (badge) {
-      badge.textContent = real ? "🧭 Ruta real por carretera" : "≈ Ruta aproximada (línea recta)";
+      badge.textContent = real ? "🧭 Ruta calculada por carretera" : "≈ Ruta aproximada (línea recta)";
       badge.classList.toggle("is-approx", !real);
     }
 
     const waBtn = $(`#wa-${prefix}`);
     if (waBtn) {
+      waBtn.disabled = false;
       waBtn.removeAttribute("aria-disabled");
       waBtn.classList.remove("is-loading");
+      waBtn.textContent = 'Revisar solicitud';
     }
 
     const routeLinkEl = $(`#route-link-${prefix}`);
@@ -593,22 +641,74 @@
     if (waBtn) {
       waBtn.onclick = () => {
         const { passengers, pets } = paxPetsFor(prefix);
+        const snapshot = { ...data, passengers, pets, routeSnapshot: structuredClone(quoteRouteData[prefix]) };
+        const parts = M360Core.breakdown(data.distanceKm, pets, CONFIG);
         openConfirmModal({
+          key: prefix + ':' + data.originName + ':' + data.destName,
           price: data.price,
           rows: [
             { label: "Servicio", value: SERVICE_NAMES[prefix] },
             { label: "Desde", value: data.originName },
             { label: "Hasta", value: data.destName },
-            { label: "Distancia", value: `${data.distanceKm.toFixed(1)} km (${data.real ? "ruta real" : "aproximada"})` },
-            { label: "Tiempo estimado", value: formatEta(data.minutes) },
+            { label: "Distancia", value: `${data.distanceKm.toFixed(1)} km (${data.real ? "ruta calculada" : "aproximada"})` },
+            { label: "Duración de conducción", value: formatEta(data.minutes) + ' · sin tráfico en vivo' },
+            { label: "Base por distancia", value: formatMoney(parts.distance) },
+            ...(parts.minimumAdjustment ? [{ label:'Ajuste a tarifa mínima', value:formatMoney(parts.minimumAdjustment) }] : []),
             { label: "Precio estimado", value: formatMoney(data.price) },
             { label: "Pasajeros", value: String(passengers) },
             { label: "Mascota", value: pets ? `Sí (+${formatMoney(CONFIG.petFee)})` : "No" },
+            ...(data.extraLine ? [{label:'Alcance', value:data.extraLine}] : []),
           ],
-          buildMessage: (paymentMethod) => buildQuoteMessage(prefix, data, paymentMethod),
+          buildMessage: (paymentMethod) => buildQuoteMessage(prefix, snapshot, paymentMethod),
         });
       };
     }
+  }
+
+  // Never turn a straight-line fallback into a price to charge. The operator
+  // can still receive the confirmed endpoints and review road access manually.
+  function showManualQuote(prefix, originName, destName, extraRows = []) {
+    const box = $(`#quote-${prefix}`), button = $(`#wa-${prefix}`);
+    lastQuoteResult[prefix] = null;
+    $(`#quote-${prefix}-route`).textContent = `${originName} → ${destName}`;
+    $(`#quote-${prefix}-price`).textContent = 'Precio por confirmar';
+    $(`#quote-${prefix}-eta`).textContent = 'No pudimos confirmar una ruta por carretera. No calculamos un cobro en línea recta. Puedes reintentar o pedir revisión al equipo.';
+    const badge = $(`#quote-${prefix}-badge`);
+    if (badge) { badge.textContent = 'Requiere revisión de ruta y acceso'; badge.classList.add('is-approx'); }
+    const link = $(`#route-link-${prefix}`); if (link) link.hidden = true;
+    const disclaimer = $(`#quote-${prefix} .quote-disclaimer`); if (disclaimer) disclaimer.hidden = true;
+    box.classList.add('show');
+    button.disabled = false; button.removeAttribute('aria-disabled'); button.classList.remove('is-loading');
+    button.textContent = 'Solicitar revisión de ruta';
+    button.onclick = () => {
+      const route = structuredClone(quoteRouteData[prefix]);
+      const pickup = route?.originLatLng ? wazeLink(...route.originLatLng) : null;
+      const destination = route?.destLatLng ? wazeLink(...route.destLatLng) : null;
+      const travel = TRAVEL_PREFIXES.includes(prefix), pax = paxPetsFor(prefix);
+      const rows = [
+        { label: 'Servicio', value: SERVICE_NAMES[prefix] || 'Encomienda' },
+        { label: 'Desde', value: originName }, { label: 'Hasta', value: destName },
+        { label: 'Precio y tiempo', value: 'Pendientes de revisión por carretera; sin importe calculado' },
+        ...extraRows,
+        ...(travel ? [{ label: 'Pasajeros', value: String(pax.passengers) }, { label: 'Mascota', value: pax.pets ? `Sí (+${formatMoney(CONFIG.petFee)})` : 'No' }] : []),
+      ];
+      openConfirmModal({ key: prefix + ':' + originName + ':' + destName, rows, price: null,
+        buildMessage: payment => `Hola *MOVILIDAD 360 SV*\nQuiero solicitar una revisión manual de esta ruta.\n` +
+          rows.map(r => `${r.label}: ${r.value}`).join('\n') +
+          (pickup ? `\nNavegar a la recogida: ${pickup}` : '') +
+          (route?.stops?.length ? '\n' + route.stops.map((p,i)=>`Parada ${i+1}: ${p.name} — ${pointWazeLink(p)}`).join('\n') : (destination ? `\nNavegar al destino después de recoger: ${destination}` : '')) +
+          `\nMétodo de pago preferido: ${payment}\n${cancellationLine(null)}\n¿Pueden confirmar acceso, precio y disponibilidad?`
+      });
+    };
+    let retry = box.querySelector('.route-retry');
+    if (!retry) { retry = document.createElement('button'); retry.type = 'button'; retry.className = 'text-button route-retry'; retry.textContent = 'Reintentar cálculo'; box.appendChild(retry); }
+    retry.hidden = false;
+    retry.onclick = () => {
+      retry.hidden = true;
+      if (prefix === 'encomienda') updateParcelQuote();
+      else refreshAllQuotesForNewOrigin();
+    };
+    trackEvent('route_manual_review', { service: prefix });
   }
 
   // Umbral por debajo del cual el origen y el destino se consideran el
@@ -643,6 +743,7 @@
     $(`#quote-${prefix}`).classList.add("show");
     const waBtn = $(`#wa-${prefix}`);
     if (waBtn) {
+      waBtn.disabled = true;
       waBtn.setAttribute("aria-disabled", "true");
       waBtn.classList.remove("is-loading");
       waBtn.onclick = null;
@@ -681,18 +782,8 @@
       empty.classList.add("show");
       return;
     }
-    const token = localGeoToken;
     empty.classList.remove("show");
-    list.innerHTML = `<p class="suggestion-loading">Buscando "${escapeHtml(filterText)}"…</p>`;
-    debouncedGeocodeLocal(filterText, (results) => {
-      if (token !== localGeoToken) return; // el cliente ya escribió otra cosa
-      if (!results.length) {
-        list.innerHTML = "";
-        empty.classList.add("show");
-        return;
-      }
-      renderSuggestionItems(list, results, null, selectMovilizarteDestination);
-    });
+    list.innerHTML = '<p class="field-hint">Pulsa Buscar dirección para encontrar otros lugares por nombre.</p>';
   }
 
   // Pinta una lista de sugerencias (lugares curados o resultados de
@@ -705,7 +796,7 @@
       <button type="button" class="suggestion-item" data-idx="${i}">
         <span>
           <span class="suggestion-name">${escapeHtml(p.name)}</span><br>
-          <span class="suggestion-meta">${fixedMeta || `📍 ${escapeHtml(p.fullName)}`}</span>
+          <span class="suggestion-meta">${fixedMeta || escapeHtml(p.fullName || 'El Salvador · confirma este punto')}</span>
         </span>
         <span class="suggestion-tag">Elegir</span>
       </button>`
@@ -723,18 +814,15 @@
   // cliente escribiendo casi al mismo tiempo en el de "movilizarte" y en el
   // de "turismo" cancelaría el temporizador del otro, dejando esa lista
   // congelada en "Buscando…" para siempre.
-  const debouncedGeocodeLocal = debounce((query, cb) => {
-    geocodeSearch(query + ", El Salvador").then(cb);
-  }, 500);
-  const debouncedGeocodeTourism = debounce((query, cb) => {
-    geocodeSearch(query + ", El Salvador").then(cb);
-  }, 500);
 
   let lastMovilizarteSelection = null;
 
   async function selectMovilizarteDestination(place) {
+    const gen = nextQuoteGeneration("movilizarte");
+    if (!M360Core.validPoint(place)) return;
     lastMovilizarteSelection = place;
     $("#input-movilizarte").value = place.name;
+    if (!requireOrigin('movilizarte')) return;
     const origin = currentOrigin();
     const originName = originLabel();
     if (isEssentiallySamePoint(origin, place)) {
@@ -743,7 +831,6 @@
       return;
     }
     showQuoteLoading("movilizarte", originName, place.name);
-    const gen = nextQuoteGeneration("movilizarte");
     const route = await fetchRoute(origin, place);
     if (!isCurrentQuoteGeneration("movilizarte", gen)) return; // se eligió otro destino mientras tanto
     quoteRouteData.movilizarte = {
@@ -771,23 +858,21 @@
     const origin = currentOrigin();
     const withDist = AIRPORTS.map((a) => ({
       ...a,
-      // Corregido con estimateRoadKm() para que el "desde" no salga más
-      // bajo que el precio real de la ruta calculada al seleccionar.
+      // Solo ordena los aeropuertos por proximidad. No calcula una tarifa.
       distanceKm: estimateRoadKm(haversineKm(origin.lat, origin.lng, a.lat, a.lng)),
     })).sort((a, b) => a.distanceKm - b.distanceKm);
 
     $("#list-aeropuerto").innerHTML = withDist
       .map((a, i) => {
         return `
-        <button type="button" class="option-card" data-idx="${i}">
+        <button type="button" class="option-card${lastAirportSelection?.name === a.name ? ' selected' : ''}" aria-pressed="${lastAirportSelection?.name === a.name}" data-idx="${i}">
           <div class="option-card-top">
             <span class="option-title">${a.name}</span>
-            ${i === 0 ? '<span class="option-badge">Más cercano</span>' : ""}
+            ${i === 0 && userLocation && airportDirection === 'to' ? '<span class="option-badge">Más cercano a tu salida</span>' : ""}
           </div>
           <span class="option-desc">${a.short} · ${a.type}</span>
           <div class="option-foot">
-            <span class="price">desde ${formatMoney(estimatePrice(a.distanceKm, false))}</span>
-            <span class="eta">${formatEta(estimateMinutes(a.distanceKm))}</span>
+            <span class="field-hint">${airportDirection === 'from' ? 'Punto de recogida' : 'Destino del traslado'}</span>
           </div>
         </button>`;
       })
@@ -795,43 +880,89 @@
 
     $$(".option-card", $("#list-aeropuerto")).forEach((card, i) => {
       card.addEventListener("click", () => {
-        $$(".option-card", $("#list-aeropuerto")).forEach((c) => c.classList.remove("selected"));
+        $$(".option-card", $("#list-aeropuerto")).forEach((c) => { c.classList.remove("selected"); c.setAttribute('aria-pressed','false'); });
         card.classList.add("selected");
+        card.setAttribute('aria-pressed', 'true');
         selectAirport(withDist[i]);
       });
     });
   }
 
   let lastAirportSelection = null;
+  let airportDirection = 'to';
+  let airportArrivalDestination = null;
+
+  function selectAirportDestination(place) {
+    if (!M360Core.validPoint(place)) return;
+    airportArrivalDestination = { ...place };
+    $('#airport-destination').value = place.name;
+    $('#airport-destination-suggestions').innerHTML = '';
+    if (lastAirportSelection) selectAirport(lastAirportSelection);
+    persistAll();
+  }
+
+  function syncAirportDirection() {
+    $$('[data-airport-direction]').forEach(button => {
+      const selected = button.dataset.airportDirection === airportDirection;
+      button.classList.toggle('selected', selected); button.setAttribute('aria-pressed', String(selected));
+    });
+    $('#airport-arrival-field').hidden = airportDirection !== 'from';
+    if (activeService === 'aeropuerto') $('.geo-banner').hidden = airportDirection === 'from';
+    renderAirports();
+  }
+
+  function wireAirportDirection() {
+    $$('[data-airport-direction]').forEach(button => button.addEventListener('click', () => {
+      if (airportDirection === button.dataset.airportDirection) return;
+      airportDirection = button.dataset.airportDirection;
+      invalidateQuote('aeropuerto'); syncAirportDirection();
+      if (lastAirportSelection) selectAirport(lastAirportSelection);
+      persistAll();
+    }));
+    wireExplicitSearch($('#airport-destination'), $('#airport-destination-suggestions'), selectAirportDestination);
+    $('#airport-destination').addEventListener('input', () => { airportArrivalDestination = null; invalidateQuote('aeropuerto'); persistAll(); });
+  }
 
   async function selectAirport(airport) {
+    const gen = nextQuoteGeneration("aeropuerto");
+    if (!M360Core.validPoint(airport)) return;
     lastAirportSelection = airport;
-    const origin = currentOrigin();
-    const originName = originLabel();
-    if (isEssentiallySamePoint(origin, airport)) {
-      showQuoteSamePoint("aeropuerto", originName, airport.name);
+    renderAirports();
+    if (airportDirection === 'to' && !requireOrigin('aeropuerto')) return;
+    if (airportDirection === 'from' && !M360Core.validPoint(airportArrivalDestination)) {
+      invalidateQuote('aeropuerto');
+      $('#quote-aeropuerto').classList.add('show');
+      $('#quote-aeropuerto-route').textContent = airport.name;
+      $('#quote-aeropuerto-price').textContent = '—';
+      $('#quote-aeropuerto-eta').textContent = 'Confirma a dónde vas después de la recogida en el aeropuerto.';
+      return;
+    }
+    const origin = airportDirection === 'from' ? airport : currentOrigin();
+    const destination = airportDirection === 'from' ? airportArrivalDestination : airport;
+    const originName = airportDirection === 'from' ? airport.name : originLabel();
+    if (isEssentiallySamePoint(origin, destination)) {
+      showQuoteSamePoint("aeropuerto", originName, destination.name);
       persistAll();
       return;
     }
-    showQuoteLoading("aeropuerto", originName, airport.name);
-    const gen = nextQuoteGeneration("aeropuerto");
-    const route = await fetchRoute(origin, airport);
+    showQuoteLoading("aeropuerto", originName, destination.name);
+    const route = await fetchRoute(origin, destination);
     if (!isCurrentQuoteGeneration("aeropuerto", gen)) return; // se eligió otro aeropuerto mientras tanto
     quoteRouteData.aeropuerto = {
       originLatLng: [origin.lat, origin.lng],
-      destLatLng: [airport.lat, airport.lng],
+      destLatLng: [destination.lat, destination.lng],
       coords: route.coords,
       real: route.real,
     };
     const price = estimatePrice(route.distanceKm, paxPetsFor("aeropuerto").pets);
     showQuote("aeropuerto", {
       originName,
-      destName: airport.name,
+      destName: destination.name,
       price,
       minutes: route.minutes,
       distanceKm: route.distanceKm,
       real: route.real,
-      extraLine: "✈️ Por favor confirmar hora de vuelo para calcular hora de recogida.",
+      extraLine: airportDirection === 'from' ? 'Recogida en aeropuerto: confirmar terminal y punto de encuentro.' : 'Salida hacia el aeropuerto: confirmar margen suficiente antes del vuelo.',
     });
     persistAll();
   }
@@ -849,7 +980,16 @@
   let parcelQuoteGen = 0;
 
   async function updateParcelQuote() {
+    const myGen = ++parcelQuoteGen;
+    invalidateQuote('encomienda');
     if (!parcelState.size) return;
+    if (!M360Core.validPoint(parcelState.fromPoint) || !M360Core.validPoint(parcelState.toPoint)) {
+      $('#quote-encomienda').classList.add('show');
+      $('#quote-encomienda-price').textContent = '—';
+      $('#quote-encomienda-eta').textContent = 'Confirma recolección y entrega para calcular el total. El tamaño por sí solo no incluye el recorrido.';
+      return;
+    }
+    const fromPoint = { ...parcelState.fromPoint }, toPoint = { ...parcelState.toPoint };
     let price = CONFIG.pricing.parcel[parcelState.size];
     if (parcelState.urgent) price += CONFIG.pricing.parcel.urgentSurcharge;
 
@@ -864,10 +1004,11 @@
       isEssentiallySamePoint(parcelState.fromPoint, parcelState.toPoint);
 
     if (parcelState.fromPoint && parcelState.toPoint && !samePoint) {
-      $("#quote-encomienda-eta").textContent = "🧭 Calculando ruta real por carretera…";
+      $('#quote-encomienda-route').textContent = `${fromPoint.name || $('#parcel-from').value} → ${toPoint.name || $('#parcel-to').value}`;
+      $('#quote-encomienda-price').textContent = '…';
+      $("#quote-encomienda-eta").textContent = "🧭 Calculando ruta por carretera…";
       $("#quote-encomienda").classList.add("show");
-      const myGen = ++parcelQuoteGen;
-      const route = await fetchRoute(parcelState.fromPoint, parcelState.toPoint);
+      const route = await fetchRoute(fromPoint, toPoint);
       // Si el cliente cambió algo (tamaño, direcciones…) mientras se
       // calculaba la ruta, esta respuesta ya no corresponde: se descarta.
       if (myGen !== parcelQuoteGen) return;
@@ -875,11 +1016,20 @@
       real = route.real;
       price += distanceKm * CONFIG.ratePerKmParcel;
       quoteRouteData.encomienda = {
-        originLatLng: [parcelState.fromPoint.lat, parcelState.fromPoint.lng],
-        destLatLng: [parcelState.toPoint.lat, parcelState.toPoint.lng],
+        originLatLng: [fromPoint.lat, fromPoint.lng],
+        destLatLng: [toPoint.lat, toPoint.lng],
         coords: route.coords,
         real: route.real,
       };
+      if (!route.real) {
+        showManualQuote('encomienda', $('#parcel-from').value.trim(), $('#parcel-to').value.trim(), [
+          { label: 'Tamaño', value: parcelSizeLabels[parcelState.size] },
+          { label: 'Urgencia solicitada', value: parcelState.urgent ? 'Express, sujeto a disponibilidad' : 'Estándar' },
+          { label: 'Frágil', value: parcelState.fragile ? 'Sí' : 'No' },
+          { label: 'Instrucciones', value: $('#parcel-notes').value.trim() || 'Sin instrucciones adicionales' },
+        ]);
+        persistAll(); return;
+      }
     } else {
       quoteRouteData.encomienda = null;
     }
@@ -893,9 +1043,14 @@
       : "Entrega estimada: 24–48 horas";
     $("#quote-encomienda").classList.add("show");
 
+    const parcelDisclaimer = $('#quote-encomienda .quote-disclaimer');
+    if (parcelDisclaimer) parcelDisclaimer.hidden = false;
+    const parcelRetry = $('#quote-encomienda .route-retry');
+    if (parcelRetry) parcelRetry.hidden = true;
+
     const badge = $("#quote-encomienda-badge");
     if (badge) {
-      badge.textContent = distanceKm !== null ? (real ? "🧭 Ruta real por carretera" : "≈ Ruta aproximada (línea recta)") : "";
+      badge.textContent = distanceKm !== null ? (real ? "🧭 Ruta calculada por carretera" : "≈ Ruta aproximada (línea recta)") : "";
       badge.classList.toggle("is-approx", distanceKm !== null && !real);
     }
     const routeLinkEl = $("#route-link-encomienda");
@@ -909,8 +1064,13 @@
 
     const waBtn = $("#wa-encomienda");
     if (waBtn) {
+      waBtn.disabled = false; waBtn.removeAttribute('aria-disabled');
+      waBtn.textContent = 'Revisar solicitud';
       waBtn.onclick = () => {
+        const state = structuredClone(parcelState);
+        const notes = $('#parcel-notes').value.trim();
         openConfirmModal({
+          key: 'encomienda:' + from + ':' + to,
           price,
           rows: [
             { label: "Servicio", value: "Encomienda" },
@@ -919,20 +1079,23 @@
             { label: "Frágil", value: parcelState.fragile ? "Sí" : "No" },
             { label: "Recolección", value: from },
             { label: "Entrega", value: to },
-            ...(distanceKm !== null ? [{ label: "Distancia", value: `${distanceKm.toFixed(1)} km (${real ? "ruta real" : "aproximada"})` }] : []),
+            { label: "Instrucciones", value: notes || 'Sin instrucciones adicionales' },
+            { label: "Base por tamaño", value: formatMoney(CONFIG.pricing.parcel[state.size]) },
+            { label: "Recargo express", value: formatMoney(state.urgent ? CONFIG.pricing.parcel.urgentSurcharge : 0) },
+            ...(distanceKm !== null ? [{ label: "Distancia", value: `${distanceKm.toFixed(1)} km (${real ? "ruta calculada" : "aproximada"})` }] : []),
             { label: "Precio estimado", value: formatMoney(price) },
           ],
           buildMessage: (paymentMethod) =>
             `Hola *MOVILIDAD 360 SV*\n\n` +
             `Quiero cotizar el envío de una *encomienda*:\n` +
-            `*Tamaño:* ${parcelSizeLabels[parcelState.size]}\n` +
-            `*Urgencia:* ${parcelState.urgent ? "Mismo día (express)" : "Estándar"}\n` +
-            `⚠️ Frágil: ${parcelState.fragile ? "Sí" : "No"}\n` +
+            `*Tamaño:* ${parcelSizeLabels[state.size]}\n` +
+            `*Urgencia:* ${state.urgent ? "Mismo día (express)" : "Estándar"}\n` +
+            `Frágil: ${state.fragile ? "Sí" : "No"}\n` +
             `*Recolección:* ${from}\n` +
-            (pointWazeLink(parcelState.fromPoint) ? `Ruta en Waze hacia la recolección: ${pointWazeLink(parcelState.fromPoint)}\n` : "") +
+            `Navegar a la recolección: ${pointWazeLink(fromPoint)}\n` +
             `*Entrega:* ${to}` +
-            (pointWazeLink(parcelState.toPoint) ? `\nRuta en Waze de la recolección a la entrega: ${pointWazeLink(parcelState.toPoint)}` : "") +
-            (distanceKm !== null ? `\n*Distancia* ${real ? "real por carretera" : "aproximada"}: ${distanceKm.toFixed(1)} km` : "") +
+            `\nNavegar al destino después de recoger: ${pointWazeLink(toPoint)}` +
+            (distanceKm !== null ? `\n*Distancia* ${real ? "calculada por carretera" : "aproximada"}: ${distanceKm.toFixed(1)} km` : "") +
             (notes ? `\n*Instrucciones:* ${notes}` : "") +
             `\n*Precio estimado:* ${formatMoney(price)}\n` +
             `*Método de pago:* ${paymentMethod}` +
@@ -993,19 +1156,21 @@
     });
 
     $("#parcel-from").addEventListener("input", () => {
+      parcelQuoteGen++; invalidateQuote('encomienda');
       parcelState.fromPoint = null;
       $("#parcel-from-map-hint").textContent = "";
       debouncedParcelQuote();
     });
     $("#parcel-to").addEventListener("input", () => {
+      parcelQuoteGen++; invalidateQuote('encomienda');
       parcelState.toPoint = null;
       $("#parcel-to-map-hint").textContent = "";
       debouncedParcelQuote();
     });
     $("#parcel-notes").addEventListener("input", debouncedParcelQuote);
 
-    wireAddressAutocomplete("parcel-from", "parcel-from-suggestions", (place) => selectParcelPoint("from", place));
-    wireAddressAutocomplete("parcel-to", "parcel-to-suggestions", (place) => selectParcelPoint("to", place));
+    wireAddressSearch("parcel-from", "parcel-from-suggestions", (place) => selectParcelPoint("from", place));
+    wireAddressSearch("parcel-to", "parcel-to-suggestions", (place) => selectParcelPoint("to", place));
   }
 
   // Autocompletado de direcciones reutilizable: busca en Nominatim mientras
@@ -1013,35 +1178,11 @@
   // que el buscador de origen y el de "¿Necesitas movilizarte?"). Se usa en
   // los puntos A/B de encomienda y mudanza, que antes solo se podían marcar
   // en el mapa o escribir a mano sin coordenadas.
-  function wireAddressAutocomplete(inputId, listId, onSelect) {
+  function wireAddressSearch(inputId, listId, onSelect) {
     const input = $(`#${inputId}`);
     const list = $(`#${listId}`);
     if (!input || !list) return;
-    let token = 0;
-    input.addEventListener(
-      "input",
-      debounce(() => {
-        const query = input.value.trim();
-        token++;
-        const myToken = token;
-        if (query.length < 3) {
-          list.innerHTML = "";
-          return;
-        }
-        list.innerHTML = `<p class="suggestion-loading">Buscando "${escapeHtml(query)}"…</p>`;
-        geocodeSearch(query + ", El Salvador").then((results) => {
-          if (myToken !== token) return; // el cliente ya escribió otra cosa
-          if (!results.length) {
-            list.innerHTML = `<p class="suggestion-loading">No encontramos esa dirección. Puedes marcarla en el mapa.</p>`;
-            return;
-          }
-          renderSuggestionItems(list, results, null, (place) => {
-            list.innerHTML = "";
-            onSelect(place);
-          });
-        });
-      }, 400)
-    );
+    wireExplicitSearch(input, list, place=>{ list.innerHTML = ''; onSelect(place); });
   }
   const debouncedParcelQuote = debounce(updateParcelQuote, 250);
 
@@ -1057,6 +1198,7 @@
   };
 
   function updateMudanzaQuote() {
+    invalidateQuote('mudanza');
     if (!mudanzaState.size) return;
     $("#quote-mudanza-route").textContent = `Mudanza (${mudanzaSizeLabels[mudanzaState.size]}) — cotización personalizada`;
     $("#quote-mudanza-eta").textContent = "Te confirmamos el precio por WhatsApp.";
@@ -1068,23 +1210,30 @@
 
     const waBtn = $("#wa-mudanza");
     if (waBtn) {
+      waBtn.disabled = !M360Core.validPoint(mudanzaState.fromPoint) || !M360Core.validPoint(mudanzaState.toPoint);
+      if (waBtn.disabled) { $('#quote-mudanza-eta').textContent = 'Confirma recolección y entrega para solicitar un precio personalizado.'; return; }
+      waBtn.removeAttribute('aria-disabled');
       waBtn.onclick = () => {
+        const state = structuredClone(mudanzaState);
+        const notes = $('#mudanza-notes').value.trim();
         openConfirmModal({
+          key: 'mudanza:' + from + ':' + to,
           price: null,
           rows: [
             { label: "Servicio", value: "Mudanza" },
             { label: "Tamaño", value: mudanzaSizeLabels[mudanzaState.size] },
             { label: "Recolección", value: from },
             { label: "Entrega", value: to },
+            { label: "Detalles y acceso", value: notes || 'Sin detalles adicionales' },
           ],
           buildMessage: (paymentMethod) =>
             `Hola *MOVILIDAD 360 SV*\n\n` +
             `Quiero cotizar una *mudanza*:\n` +
-            `*Tamaño:* ${mudanzaSizeLabels[mudanzaState.size]}\n` +
+            `*Tamaño:* ${mudanzaSizeLabels[state.size]}\n` +
             `*Recolección:* ${from}\n` +
-            (pointWazeLink(mudanzaState.fromPoint) ? `Ruta en Waze hacia la recolección: ${pointWazeLink(mudanzaState.fromPoint)}\n` : "") +
+            `Navegar a la recolección: ${pointWazeLink(state.fromPoint)}\n` +
             `*Entrega:* ${to}` +
-            (pointWazeLink(mudanzaState.toPoint) ? `\nRuta en Waze de la recolección a la entrega: ${pointWazeLink(mudanzaState.toPoint)}` : "") +
+            `\nNavegar al destino después de recoger: ${pointWazeLink(state.toPoint)}` +
             (notes ? `\n*Detalles:* ${notes}` : "") +
             `\n*Método de pago preferido:* ${paymentMethod}` +
             `\n⚠️ ${cancellationLine(null)}` +
@@ -1125,19 +1274,21 @@
     });
 
     $("#mudanza-from").addEventListener("input", () => {
+      invalidateQuote('mudanza');
       mudanzaState.fromPoint = null;
       $("#mudanza-from-map-hint").textContent = "";
       debouncedMudanzaQuote();
     });
     $("#mudanza-to").addEventListener("input", () => {
+      invalidateQuote('mudanza');
       mudanzaState.toPoint = null;
       $("#mudanza-to-map-hint").textContent = "";
       debouncedMudanzaQuote();
     });
     $("#mudanza-notes").addEventListener("input", debouncedMudanzaQuote);
 
-    wireAddressAutocomplete("mudanza-from", "mudanza-from-suggestions", (place) => selectMudanzaPoint("from", place));
-    wireAddressAutocomplete("mudanza-to", "mudanza-to-suggestions", (place) => selectMudanzaPoint("to", place));
+    wireAddressSearch("mudanza-from", "mudanza-from-suggestions", (place) => selectMudanzaPoint("from", place));
+    wireAddressSearch("mudanza-to", "mudanza-to-suggestions", (place) => selectMudanzaPoint("to", place));
   }
   const debouncedMudanzaQuote = debounce(updateMudanzaQuote, 250);
 
@@ -1175,12 +1326,18 @@
     const waBtn = $("#wa-tarifafija");
     if (waBtn) {
       waBtn.onclick = () => {
+        const { passengers, pets } = paxPetsFor('tarifafija');
+        const finalPrice = dest.price + (pets ? CONFIG.petFee : 0);
         openConfirmModal({
+          key: 'tarifafija:' + dest.name,
           price: finalPrice,
           rows: [
             { label: "Servicio", value: "Tarifa fija" },
             { label: "Desde", value: FIXED_ROUTES.origin },
             { label: "Hasta", value: dest.name },
+            { label: "Pasajeros", value: String(passengers) },
+            { label: "Mascota", value: pets ? `Sí (+${formatMoney(CONFIG.petFee)})` : 'No' },
+            { label: "Puntos de encuentro", value: 'El equipo confirmará el acceso exacto en Assistenza Italiana y el destino antes de asignar el vehículo.' },
             { label: "Precio", value: formatMoney(finalPrice) + (dest.negotiable ? " (negociable)" : "") },
           ],
           buildMessage: (paymentMethod) =>
@@ -1214,63 +1371,39 @@
      PARADA 4 — ¿Viajar a otro departamento?
      ===================================================================== */
   function renderDepartments() {
-    const origin = currentOrigin();
-    $("#list-departamento").innerHTML = DEPARTMENTS.map((d, i) => {
-      const distanceKm = estimateRoadKm(haversineKm(origin.lat, origin.lng, d.lat, d.lng));
-      return `
-        <button type="button" class="option-card" data-idx="${i}">
-          <div class="option-card-top">
-            <span class="option-title">${d.name}</span>
-            ${d.popular ? '<span class="option-badge">Popular</span>' : ""}
-          </div>
-          <span class="option-desc">${d.tag}</span>
-          <div class="option-foot">
-            <span class="price">desde ${formatMoney(estimatePrice(distanceKm, false))}</span>
-            <span class="eta">${formatEta(estimateMinutes(distanceKm))}</span>
-          </div>
-        </button>`;
-    }).join("");
-
-    $$(".option-card", $("#list-departamento")).forEach((card, i) => {
-      card.addEventListener("click", () => {
-        $$(".option-card", $("#list-departamento")).forEach((c) => c.classList.remove("selected"));
-        card.classList.add("selected");
-        selectDepartment(DEPARTMENTS[i]);
-      });
-    });
+    const list = $("#list-departamento");
+    list.innerHTML = DEPARTMENTS.map((d, i) =>
+      `<button type="button" class="chip" data-idx="${i}">${escapeHtml(d.name)}</button>`
+    ).join("");
+    $$(".chip", list).forEach((button, i) => button.addEventListener("click", () => {
+      const input = $("#input-departamento");
+      input.value = DEPARTMENTS[i].name;
+      lastDepartmentSelection = null; invalidateQuote("departamento");
+      input.dispatchEvent(new Event("input", { bubbles:true })); input.focus();
+      $("#departamento-hint").textContent = "Añade un municipio, dirección o lugar concreto y confirma un resultado. El departamento no es un punto de llegada.";
+    }));
   }
 
   let lastDepartmentSelection = null;
 
-  async function selectDepartment(dept) {
-    lastDepartmentSelection = dept;
-    const origin = currentOrigin();
-    const originName = originLabel();
-    const destName = `Departamento de ${dept.name}`;
-    if (isEssentiallySamePoint(origin, dept)) {
-      showQuoteSamePoint("departamento", originName, destName);
-      persistAll();
-      return;
-    }
-    showQuoteLoading("departamento", originName, destName);
+  async function selectDepartment(place) {
     const gen = nextQuoteGeneration("departamento");
-    const route = await fetchRoute(origin, dept);
-    if (!isCurrentQuoteGeneration("departamento", gen)) return; // se eligió otro departamento mientras tanto
-    quoteRouteData.departamento = {
-      originLatLng: [origin.lat, origin.lng],
-      destLatLng: [dept.lat, dept.lng],
-      coords: route.coords,
-      real: route.real,
-    };
-    const price = estimatePrice(route.distanceKm, paxPetsFor("departamento").pets);
-    showQuote("departamento", {
-      originName,
-      destName,
-      price,
-      minutes: route.minutes,
-      distanceKm: route.distanceKm,
-      real: route.real,
-    });
+    if (!M360Core.validPoint(place)) return;
+    lastDepartmentSelection = place;
+    $("#input-departamento").value = place.name;
+    if (!requireOrigin("departamento")) return;
+    const origin = { ...currentOrigin() }, originName = originLabel();
+    if (isEssentiallySamePoint(origin, place)) {
+      showQuoteSamePoint("departamento", originName, place.name); persistAll(); return;
+    }
+    showQuoteLoading("departamento", originName, place.name);
+    const route = await fetchRoute(origin, place);
+    if (!isCurrentQuoteGeneration("departamento", gen)) return;
+    quoteRouteData.departamento = { originLatLng:[origin.lat,origin.lng],
+      destLatLng:[place.lat,place.lng], coords:route.coords, real:route.real };
+    showQuote("departamento", { originName, destName:place.name,
+      price:estimatePrice(route.distanceKm,paxPetsFor("departamento").pets),
+      minutes:route.minutes,distanceKm:route.distanceKm,real:route.real });
     persistAll();
   }
 
@@ -1334,8 +1467,7 @@
           </div>
           <span class="option-desc">${p.desc}</span>
           <div class="option-foot">
-            <span class="price">desde ${formatMoney(estimatePrice(distanceKm, false))}</span>
-            <span class="eta">${formatEta(estimateMinutes(distanceKm))}</span>
+            <span class="field-hint">${userLocation ? 'Calcular ruta y precio' : 'Confirma tu salida para cotizar'}</span>
           </div>
         </button>`;
       })
@@ -1354,55 +1486,19 @@
   // lista curada: lo busca como dirección real (OpenStreetMap) para que
   // el cliente pueda pedir el viaje aunque no sepa marcarlo en el mapa.
   function renderTourismGeoFallback(grid, empty) {
-    const query = touristSearch.trim();
-    if (query.length < 3) {
-      grid.innerHTML = "";
-      empty.classList.add("show");
-      return;
-    }
-    const token = touristGeoToken;
     empty.classList.remove("show");
-    grid.innerHTML = `<p class="suggestion-loading">Buscando "${escapeHtml(query)}"…</p>`;
-    debouncedGeocodeTourism(query, (results) => {
-      if (token !== touristGeoToken) return;
-      if (!results.length) {
-        grid.innerHTML = "";
-        empty.classList.add("show");
-        return;
-      }
-      const origin = currentOrigin();
-      grid.innerHTML = results
-        .map((p, i) => {
-          const distanceKm = estimateRoadKm(haversineKm(origin.lat, origin.lng, p.lat, p.lng));
-          return `
-          <button type="button" class="option-card" data-idx="${i}">
-            <div class="option-card-top">
-              <span class="option-title">${escapeHtml(p.name)}</span>
-            </div>
-            <span class="option-desc">📍 ${escapeHtml(p.fullName)}</span>
-            <div class="option-foot">
-              <span class="price">desde ${formatMoney(estimatePrice(distanceKm, false))}</span>
-              <span class="eta">${formatEta(estimateMinutes(distanceKm))}</span>
-            </div>
-          </button>`;
-        })
-        .join("");
-      $$(".option-card", grid).forEach((card, i) => {
-        card.addEventListener("click", () => {
-          $$(".option-card", grid).forEach((c) => c.classList.remove("selected"));
-          card.classList.add("selected");
-          selectTourism(results[i]);
-        });
-      });
-    });
+    grid.innerHTML = '<p class="field-hint">No hay coincidencias en este catálogo. Usa Buscar dirección para consultar otros lugares, o cambia el filtro.</p>';
   }
 
   let lastTourismSelection = null;
   let lastTourismRouteSelection = null;
 
   async function selectTourism(place) {
+    const gen = nextQuoteGeneration("turismo");
+    if (!M360Core.validPoint(place)) return;
     lastTourismSelection = place;
     lastTourismRouteSelection = null;
+    if (!requireOrigin('turismo')) return;
     const origin = currentOrigin();
     const originName = originLabel();
     if (isEssentiallySamePoint(origin, place)) {
@@ -1411,7 +1507,6 @@
       return;
     }
     showQuoteLoading("turismo", originName, place.name);
-    const gen = nextQuoteGeneration("turismo");
     const route = await fetchRoute(origin, place);
     if (!isCurrentQuoteGeneration("turismo", gen)) return; // se eligió otro destino/ruta mientras tanto
     quoteRouteData.turismo = {
@@ -1454,16 +1549,17 @@
   }
 
   async function selectTouristRoute(route) {
+    const gen = nextQuoteGeneration("turismo");
     lastTourismRouteSelection = route;
     lastTourismSelection = null;
-    const stopPlaces = route.stops.map((name) => TOURIST_PLACES.find((p) => p.name === name)).filter(Boolean);
+    const stopPlaces = Array.isArray(route.points) ? route.points.filter(M360Core.validPoint) : route.stops.map((name) => TOURIST_PLACES.find((p) => p.name === name)).filter(Boolean);
     if (stopPlaces.length === 0) return;
+    if (!requireOrigin('turismo')) return;
 
     const origin = currentOrigin();
     const originName = originLabel();
     const destLabel = `${route.name} (${route.stops.join(" → ")})`;
     showQuoteLoading("turismo", originName, destLabel);
-    const gen = nextQuoteGeneration("turismo");
 
     let totalKm = 0;
     let totalMinutes = 0;
@@ -1483,7 +1579,7 @@
       totalKm += leg.distanceKm;
       totalMinutes += leg.minutes;
       if (!leg.real) allReal = false;
-      if (leg.coords) coordsAll = coordsAll.concat(leg.coords);
+      coordsAll = coordsAll.concat(leg.coords || [[legOrigin.lat,legOrigin.lng],[stop.lat,stop.lng]]);
       legOrigin = stop;
     }
 
@@ -1499,6 +1595,7 @@
       destLatLng: [lastStop.lat, lastStop.lng],
       coords: coordsAll.length ? coordsAll : null,
       real: allReal,
+      stops: stopPlaces.map(p=>({name:p.name,lat:p.lat,lng:p.lng})),
     };
     // La tarifa por tramos se aplica UNA sola vez a la distancia total del
     // recorrido completo (no a cada tramo por separado), igual que un solo
@@ -1512,6 +1609,7 @@
       minutes: totalMinutes,
       distanceKm: totalKm,
       real: allReal,
+      extraLine: 'Traslados de ida entre las paradas indicadas. No incluye regreso, espera, entradas ni duración de visitas; se acuerdan por WhatsApp.',
     });
     persistAll();
   }
@@ -1534,7 +1632,13 @@
       if (mapContext === "view-route") return; // vista de solo lectura
       pendingLatLng = e.latlng;
       if (marker) marker.setLatLng(e.latlng);
-      else marker = L.marker(e.latlng, { draggable: true }).addTo(map);
+      else {
+        marker = L.marker(e.latlng, { draggable: true }).addTo(map);
+        marker.on('dragend', () => {
+          pendingLatLng = marker.getLatLng();
+          $('#mapModalHint').textContent = `Punto seleccionado: ${pendingLatLng.lat.toFixed(4)}, ${pendingLatLng.lng.toFixed(4)}`;
+        });
+      }
       $("#mapModalHint").textContent = `Punto seleccionado: ${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`;
       $("#mapModalConfirm").disabled = false;
     });
@@ -1549,12 +1653,16 @@
     routeMarkers = [];
   }
 
+  let mapOpenGeneration = 0;
   async function openMapModal(context) {
+    const generation = ++mapOpenGeneration;
     mapContext = context;
-    $("#mapModal").classList.add("open");
+    M360UI.open('mapModal');
     $("#mapModalTitle").textContent = "Elige tu destino en el mapa";
     $("#mapModalConfirm").style.display = "";
     $("#mapModalConfirm").disabled = true;
+    $('#mapModalCenter').hidden = false;
+    $('#mapModalCenter').disabled = true;
     $("#mapModalHint").textContent = "Cargando mapa…";
     try {
       await loadLeaflet();
@@ -1562,9 +1670,11 @@
       $("#mapModalHint").textContent = "No se pudo cargar el mapa. Verifica tu conexión a internet.";
       return;
     }
+    if (generation !== mapOpenGeneration) return;
     ensureMap();
     clearRouteLayer();
     pendingLatLng = null;
+    $('#mapModalCenter').disabled = false;
     if (marker) {
       marker.remove();
       marker = null;
@@ -1575,12 +1685,14 @@
   }
 
   async function openRouteView(prefix) {
+    const generation = ++mapOpenGeneration;
     const data = quoteRouteData[prefix];
     if (!data) return;
     mapContext = "view-route";
-    $("#mapModal").classList.add("open");
+    M360UI.open('mapModal');
     $("#mapModalTitle").textContent = "Ruta estimada del viaje";
     $("#mapModalConfirm").style.display = "none";
+    $('#mapModalCenter').hidden = true;
     $("#mapModalHint").textContent = "Cargando mapa…";
     try {
       await loadLeaflet();
@@ -1588,6 +1700,7 @@
       $("#mapModalHint").textContent = "No se pudo cargar el mapa. Verifica tu conexión a internet.";
       return;
     }
+    if (generation !== mapOpenGeneration) return;
     ensureMap();
     clearRouteLayer();
     if (marker) {
@@ -1615,16 +1728,20 @@
       map.setView(data.originLatLng, 15);
     }
     $("#mapModalHint").textContent = data.real
-      ? "Ruta real calculada por carretera (la misma referencia que usamos para cobrar)."
+      ? "Ruta orientativa por carretera, sin tráfico en vivo. El precio final y el recorrido se confirman con el equipo."
       : "Ruta aproximada en línea recta — no se pudo calcular la ruta exacta por carretera en este momento.";
     setTimeout(() => map.invalidateSize(), 60);
   }
 
   function closeMapModal() {
-    $("#mapModal").classList.remove("open");
+    mapOpenGeneration++;
+    M360UI.close('mapModal');
   }
 
   function wireMapModal() {
+    $('#mapModalCenter').addEventListener('click', () => {
+      if (map && mapContext !== 'view-route') map.fire('click', { latlng: map.getCenter() });
+    });
     $$("[data-open-map]").forEach((btn) => {
       btn.addEventListener("click", () => openMapModal(btn.dataset.openMap));
     });
@@ -1636,6 +1753,7 @@
       if (e.target.id === "mapModal") closeMapModal();
     });
     $("#mapModalConfirm").addEventListener("click", () => {
+      if (marker) pendingLatLng = marker.getLatLng();
       if (!pendingLatLng) return;
       const place = {
         name: `Punto en el mapa (${pendingLatLng.lat.toFixed(3)}, ${pendingLatLng.lng.toFixed(3)})`,
@@ -1643,6 +1761,9 @@
         lng: pendingLatLng.lng,
       };
       if (mapContext === "movilizarte") selectMovilizarteDestination(place);
+      if (mapContext === "origin") selectOriginFromSearch(place);
+      if (mapContext === "airport-destination") selectAirportDestination(place);
+      if (mapContext === "departamento") selectDepartment(place);
       if (mapContext === "turismo") selectTourism(place);
       if (mapContext === "parcel-from") selectParcelPoint("from", place);
       if (mapContext === "parcel-to") selectParcelPoint("to", place);
@@ -1661,29 +1782,13 @@
   let confirmPaymentMethod = CONFIG.paymentMethods[0];
   let confirmRecipient = "self"; // "self" | "other"
   let confirmBankChoice = null; // { bank, number } cuando el pago es por transferencia
+  const confirmationDrafts = new Map();
 
   // Cliente frecuente: no hay cuentas ni backend, así que esto es solo un
   // contador local del navegador (se resetea si borra el caché o cambia de
   // dispositivo) — sirve como recordatorio motivacional, no como control
   // real. El descuento real siempre lo decide el equipo por WhatsApp
   // (honor system: el cliente lo menciona, el equipo confirma el precio).
-  const FREQUENT_STORAGE_KEY = "movilidad360_trip_requests_count";
-  const FREQUENT_THRESHOLD = 3;
-  function getFrequentCount() {
-    try {
-      return Number(localStorage.getItem(FREQUENT_STORAGE_KEY)) || 0;
-    } catch (err) {
-      return 0;
-    }
-  }
-  function bumpFrequentCount() {
-    try {
-      localStorage.setItem(FREQUENT_STORAGE_KEY, String(getFrequentCount() + 1));
-    } catch (err) {
-      /* localStorage no disponible (privado/bloqueado); no es crítico. */
-    }
-  }
-
   function renderConfirmRows(rows) {
     $("#confirmRows").innerHTML = rows
       .map((r) => `<div class="confirm-row"><span>${escapeHtml(r.label)}</span><strong>${escapeHtml(r.value)}</strong></div>`)
@@ -1710,48 +1815,32 @@
   // el método de pago elegido es "Transferencia". El cliente elige una y
   // puede copiar el número con un botón.
   function renderConfirmBankAccounts() {
-    const box = $("#confirmBankAccounts");
+    const box = $('#confirmBankAccounts');
     if (!box) return;
-    const show = confirmPaymentMethod === "Transferencia" && (CONFIG.bankAccounts || []).length > 0;
-    box.hidden = !show;
-    if (!show) {
-      confirmBankChoice = null;
-      return;
-    }
+    box.hidden = confirmPaymentMethod !== 'Transferencia' || !CONFIG.bankAccounts?.length;
+    const notice = $('#confirmTransferNotice'); if (notice) notice.hidden = box.hidden;
+    if (box.hidden) { confirmBankChoice = null; return; }
     if (!confirmBankChoice) confirmBankChoice = CONFIG.bankAccounts[0];
-    box.innerHTML = CONFIG.bankAccounts
-      .map(
-        (acc) => `
-      <div class="confirm-bank-account${acc.number === confirmBankChoice.number ? " selected" : ""}" data-bank="${escapeHtml(acc.bank)}" data-number="${escapeHtml(acc.number)}" role="button" tabindex="0">
-        <div class="confirm-bank-account-info"><b>${escapeHtml(acc.bank)}</b><span>${escapeHtml(acc.number)}</span></div>
-        <button type="button" class="confirm-bank-copy" data-copy="${escapeHtml(acc.number)}">Copiar</button>
-      </div>`
-      )
-      .join("");
-    $$(".confirm-bank-account", box).forEach((row) => {
-      row.addEventListener("click", (e) => {
-        if (e.target.closest(".confirm-bank-copy")) return;
-        confirmBankChoice = { bank: row.dataset.bank, number: row.dataset.number };
-        $$(".confirm-bank-account", box).forEach((r) => r.classList.toggle("selected", r === row));
+    box.innerHTML = CONFIG.bankAccounts.map(acc => `
+      <div class="confirm-bank-account" data-bank="${escapeHtml(acc.bank)}" data-number="${escapeHtml(acc.number)}">
+        <button type="button" class="confirm-bank-select" aria-pressed="false"><b>${escapeHtml(acc.bank)}</b><span>${escapeHtml(acc.number)}</span></button>
+        <button type="button" class="confirm-bank-copy" aria-label="Copiar cuenta de ${escapeHtml(acc.bank)}">Copiar</button>
+      </div>`).join('');
+    const sync = () => $$('.confirm-bank-account',box).forEach(row=>{
+      const selected = row.dataset.number === confirmBankChoice.number;
+      row.classList.toggle('selected',selected);
+      $('.confirm-bank-select',row).setAttribute('aria-pressed',String(selected));
+    });
+    const choose = row => { confirmBankChoice={bank:row.dataset.bank,number:row.dataset.number}; sync(); };
+    $$('.confirm-bank-account',box).forEach(row=>{
+      $('.confirm-bank-select',row).addEventListener('click',()=>choose(row));
+      $('.confirm-bank-copy',row).addEventListener('click',async e=>{
+        choose(row); const button=e.currentTarget;
+        try { await navigator.clipboard.writeText(row.dataset.number); button.textContent='¡Copiado!'; }
+        catch { button.textContent='Copia el número visible'; }
       });
     });
-    $$(".confirm-bank-copy", box).forEach((btn) => {
-      btn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        try {
-          await navigator.clipboard.writeText(btn.dataset.copy);
-          btn.textContent = "¡Copiado!";
-          btn.classList.add("copied");
-          setTimeout(() => {
-            btn.textContent = "Copiar";
-            btn.classList.remove("copied");
-          }, 1800);
-        } catch (err) {
-          /* portapapeles no disponible (navegador viejo o sin permiso); el
-             número ya está visible en pantalla para copiarlo a mano. */
-        }
-      });
-    });
+    sync();
   }
 
   function renderConfirmRecipientPills() {
@@ -1769,8 +1858,8 @@
     el.classList.toggle("is-fee", isFee);
   }
 
-  function openConfirmModal({ rows, price, buildMessage }) {
-    confirmModalCtx = { buildMessage };
+  function openConfirmModal({ rows, price, buildMessage, key = 'request' }) {
+    confirmModalCtx = { buildMessage, key };
     renderConfirmRows(rows);
     renderConfirmPaymentPills();
     renderConfirmBankAccounts();
@@ -1779,22 +1868,32 @@
     // Se reinician los campos opcionales (destinatario / negociación) en
     // cada apertura para que no se filtre información de una cotización a
     // otra sin querer.
-    confirmRecipient = "self";
+    const draft = confirmationDrafts.get(key) || {};
+    confirmRecipient = draft.recipient || "self";
     renderConfirmRecipientPills();
-    $("#confirmRecipientName").value = "";
-    $("#confirmRecipientPhone").value = "";
-    $("#confirmNegotiatePanel").hidden = true;
-    $("#confirmNegotiatePrice").value = "";
-    $("#confirmNegotiateToggle").classList.remove("is-active");
+    $("#confirmRecipientName").value = draft.name || "";
+    $("#confirmRecipientPhone").value = draft.phone || "";
+    $("#confirmNegotiatePanel").hidden = !draft.negotiate;
+    $("#confirmNegotiatePrice").value = draft.price || "";
+    $("#confirmNegotiateToggle").classList.toggle("is-active", !!draft.negotiate);
+    $('#confirmNegotiateToggle').setAttribute('aria-expanded', String(!!draft.negotiate));
+    $('#confirmError').hidden = true;
 
     const frequentNote = $("#confirmFrequentNote");
-    if (frequentNote) frequentNote.hidden = getFrequentCount() < FREQUENT_THRESHOLD;
+    if (frequentNote) { frequentNote.hidden = false; frequentNote.open = false; }
+    if (globalThis.M360Request) M360Request.open(key, key.split(':')[0], captureSavedRoute(key.split(':')[0], rows));
 
-    $("#confirmModal").classList.add("open");
+    trackEvent('quote_review', { service: key.split(':')[0] });
+    M360UI.open('confirmModal');
   }
 
   function closeConfirmModal() {
-    $("#confirmModal").classList.remove("open");
+    if (confirmModalCtx && globalThis.M360Request) M360Request.remember(confirmModalCtx.key);
+    if (confirmModalCtx) confirmationDrafts.set(confirmModalCtx.key, {
+      recipient:confirmRecipient, name:$('#confirmRecipientName').value, phone:$('#confirmRecipientPhone').value,
+      negotiate:!$('#confirmNegotiatePanel').hidden, price:$('#confirmNegotiatePrice').value
+    });
+    M360UI.close('confirmModal');
     confirmModalCtx = null;
   }
 
@@ -1816,18 +1915,24 @@
       const panel = $("#confirmNegotiatePanel");
       panel.hidden = !panel.hidden;
       e.currentTarget.classList.toggle("is-active", !panel.hidden);
-      if (!panel.hidden) panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      e.currentTarget.setAttribute('aria-expanded', String(!panel.hidden));
+      if (!panel.hidden) $('#confirmNegotiatePrice').focus();
     });
 
     $("#confirmSendBtn").addEventListener("click", () => {
       if (!confirmModalCtx) return;
+      const fail = (text, field) => { $('#confirmError').textContent = text; $('#confirmError').hidden = false; $('#confirmError').dataset.field = field?.id || ''; field?.focus(); };
+      const plan = M360Request.read();
+      if (plan.error) { fail(plan.error, document.getElementById(plan.field)); return; }
       let msg = confirmModalCtx.buildMessage(confirmPaymentMethod);
+      msg += M360Request.message(plan);
 
       if (confirmRecipient === "other") {
-        const name = $("#confirmRecipientName").value.trim();
-        const phone = $("#confirmRecipientPhone").value.trim();
-        msg += `\n\n*Este viaje es para:* ${name || "(el cliente indicará el nombre por WhatsApp)"}`;
-        if (phone) msg += `\n*Teléfono para coordinar con esa persona:* ${phone}`;
+        const name = sanitizeWaText($("#confirmRecipientName").value.trim());
+        const phone = M360Core.phone($("#confirmRecipientPhone").value);
+        if (name.length < 2) { fail('Escribe el nombre de la persona que viajará.', $('#confirmRecipientName')); return; }
+        if (!phone) { fail('Escribe un teléfono válido para coordinar con quien viajará.', $('#confirmRecipientPhone')); return; }
+        msg += `\n\n*Este viaje es para:* ${name}\n*Teléfono para coordinar:* ${phone}`;
       }
 
       if (confirmPaymentMethod === "Transferencia" && confirmBankChoice) {
@@ -1840,18 +1945,22 @@
       // <form> que se envía, esa validación del navegador nunca se dispara
       // — sin este chequeo, un valor no numérico mandaba "$NaN" al mensaje,
       // y uno negativo se enviaba tal cual.
-      if (negotiatePrice && Number.isFinite(negotiatePriceNum) && negotiatePriceNum > 0) {
+      if (!$('#confirmNegotiatePanel').hidden && (!negotiatePrice || !Number.isFinite(negotiatePriceNum) || negotiatePriceNum <= 0 || negotiatePriceNum > 10000)) {
+        fail('Indica una propuesta válida mayor que cero y de hasta $10,000, o desactiva la negociación.', $('#confirmNegotiatePrice')); return;
+      }
+      if (!$('#confirmNegotiatePanel').hidden && negotiatePrice && Number.isFinite(negotiatePriceNum) && negotiatePriceNum > 0) {
         msg += `\n*Precio propuesto por el cliente:* ${formatMoney(negotiatePriceNum)} (a negociar, sujeto a tráfico, hora, aire acondicionado y clima).`;
       }
 
-      if (getFrequentCount() >= FREQUENT_THRESHOLD) {
-        msg += `\n*Cliente frecuente* (varias solicitudes previas desde este dispositivo) — ¿aplica algún descuento?`;
-      }
-
-      trackEvent("whatsapp_click", { link_id: "confirm-send" });
-      window.open(waLink(msg), "_blank", "noopener");
-      bumpFrequentCount();
+      trackEvent("request_handoff", { service: confirmModalCtx.key.split(':')[0] });
+      const url = waLink(msg);
+      window.open(url, "_blank", "noopener");
       closeConfirmModal();
+      const handoff = $('#requestHandoff');
+      handoff.hidden = false;
+      $('#requestContinue').onclick = () => window.open(url,'_blank','noopener');
+      handoff.scrollIntoView({block:'center',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+      $('#requestHandoffTitle').focus();
     });
   }
 
@@ -1888,19 +1997,21 @@
 
         const hint = $("#coverageMapHint");
         if (hint) {
+          let interactive = false;
           hint.addEventListener("click", () => {
-            cmap.dragging.enable();
-            cmap.touchZoom.enable();
-            cmap.doubleClickZoom.enable();
-            cmap.boxZoom.enable();
-            cmap.scrollWheelZoom.enable();
-            hint.classList.add("is-hidden");
+            interactive = !interactive;
+            for (const type of ['dragging','touchZoom','doubleClickZoom','boxZoom','scrollWheelZoom']) cmap[type][interactive?'enable':'disable']();
+            hint.textContent = interactive ? 'Terminar de explorar' : 'Explorar mapa';
+            hint.setAttribute('aria-pressed',String(interactive));
           });
         }
       })
       .catch(() => {
+        coverageMapRequested = false;
         const el = $("#coverage-map");
         if (el) el.textContent = "No se pudo cargar el mapa de cobertura. Verifica tu conexión a internet.";
+        const hint = $('#coverageMapHint');
+        if (hint) { hint.textContent = 'Reintentar mapa'; hint.onclick = () => { hint.onclick = null; initCoverageMapIfNeeded(); }; }
       });
   }
 
@@ -1931,18 +2042,37 @@
   // Dibuja "★★★★☆" para una calificación de 1 a 5. Devuelve "" si el
   // valor no es un número válido en ese rango (la tarjeta va sin estrellas).
   function renderStars(rating) {
-    const n = Math.round(Number(rating));
-    if (!Number.isFinite(n) || n < 1 || n > 5) return "";
-    const full = "★".repeat(n);
-    const empty = "☆".repeat(5 - n);
-    return `<div class="testimonial-stars" aria-label="${n} de 5 estrellas">${full}<span class="testimonial-stars-empty">${empty}</span></div>`;
+    if (!Number.isFinite(rating) || rating < 1 || rating > 5) return "";
+    const full = Math.round(rating);
+    return "★".repeat(full) + "☆".repeat(5 - full);
   }
 
   function renderTestimonials() {
     const grid = $("#testimonials-grid");
     if (!grid) return;
-    const items = Array.isArray(TESTIMONIALS) ? TESTIMONIALS : [];
+    const items = (Array.isArray(TESTIMONIALS) ? TESTIMONIALS : []).filter(t =>
+      t && typeof t.name === "string" && t.name.trim() && typeof t.quote === "string" && t.quote.trim());
     const section = grid.closest(".reviews-section");
+    const note = $("#testimonials-note");
+    if (note) note.hidden = !items.length;
+    if (section) section.classList.toggle("has-testimonials", items.length > 0);
+    let sourceUrl = "";
+    try {
+      const url = new URL(CONFIG.googleReviewsUrl);
+      if (url.protocol === "https:" && ["g.page", "www.google.com", "maps.google.com", "maps.app.goo.gl"].includes(url.hostname)) sourceUrl = url.href;
+    } catch { /* Invalid source: omit the external link. */ }
+    const summary = $("#google-rating-summary"), dateNote = $("#google-rating-date");
+    const snapshot = CONFIG.googleReviewsSnapshot;
+    const checkedDate = /^\d{4}-\d{2}-\d{2}$/.test(snapshot?.checkedOn || "") ? new Date(snapshot.checkedOn + "T12:00:00Z") : null;
+    const validSnapshot = sourceUrl && Number.isFinite(snapshot?.rating) && snapshot.rating >= 1 && snapshot.rating <= 5 && Number.isInteger(snapshot?.count) && snapshot.count > 0 && checkedDate && Number.isFinite(checkedDate.getTime());
+    if (summary) {
+      summary.hidden = !validSnapshot;
+      summary.textContent = validSnapshot ? `${snapshot.rating.toFixed(1).replace(".", ",")} de 5 · ${snapshot.count} ${snapshot.count === 1 ? "opinión" : "opiniones"} en Google` : "";
+    }
+    if (dateNote) {
+      dateNote.hidden = !validSnapshot;
+      dateNote.textContent = validSnapshot ? `Consultado el ${checkedDate.toLocaleDateString("es-SV", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}. Actualización manual, no en tiempo real.` : "";
+    }
     // Sin testimonios reales todavía: no dibujamos tarjetas vacías.
     if (!items.length) {
       grid.innerHTML = "";
@@ -1950,14 +2080,15 @@
       return;
     }
     grid.hidden = false;
-    if (section) section.classList.add("has-testimonials");
     grid.innerHTML = items
       .map(
         (t) => `
       <figure class="testimonial-card">
-        ${renderStars(t.rating)}
-        <blockquote>"${escapeHtml(t.quote || "")}"</blockquote>
-        <figcaption><strong>${escapeHtml(t.name || "")}</strong><span>${escapeHtml(t.service || "")}</span></figcaption>
+        ${renderStars(t.rating) ? `<span class="review-stars" role="img" aria-label="${t.rating} de 5 estrellas">${renderStars(t.rating)}</span>` : ""}
+        <blockquote>“${escapeHtml(t.quote)}”</blockquote>
+        <figcaption><strong>${escapeHtml(t.name)}</strong><span>Extracto de una opinión pública</span>
+          ${sourceUrl ? `<a class="review-source" href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer">Fuente: Google Maps</a>` : ""}
+        </figcaption>
       </figure>`
       )
       .join("");
@@ -1980,7 +2111,7 @@
         <div class="vehicle-media">
           ${
             photos.length
-              ? `<img class="vehicle-photo" src="${photos[0]}" alt="${v.type}" loading="lazy" data-photos='${JSON.stringify(photos)}' data-photo-idx="0">`
+              ? `<img class="vehicle-photo" src="/${photos[0]}" alt="${v.type}" loading="lazy" data-photos='${JSON.stringify(photos)}' data-photo-idx="0">`
               : `<svg class="vehicle-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${VEHICLE_ICONS[v.icon] || ""}</svg>`
           }
           ${
@@ -1996,7 +2127,7 @@
       </button>`;
     }).join("");
     wireVehicleCardTilt();
-    wireVehiclePhotoRotation();
+    // Vehicle photos change only when the user opens/navigates the fleet viewer.
   }
 
   // Junta los conductores reales desde VEHICLES (un mismo conductor puede
@@ -2037,7 +2168,7 @@
         (d) => `
       <div class="driver-card">
         <div class="driver-avatar">${
-          d.photo ? `<img src="${d.photo}" alt="${d.name}" loading="lazy">` : DRIVER_PLACEHOLDER_ICON
+          d.photo ? `<img src="/${d.photo}" alt="${d.name}" loading="lazy">` : DRIVER_PLACEHOLDER_ICON
         }</div>
         <p class="driver-name">${d.name}</p>
         <p class="driver-vehicles">${d.vehicleTypes.join(" · ")}</p>
@@ -2045,7 +2176,7 @@
           ${d.experience ? `<span class="driver-badge">${d.experience}</span>` : ""}
           ${d.trips != null ? `<span class="driver-badge">${d.trips.toLocaleString("es-SV")}+ viajes</span>` : ""}
         </div>
-        <span class="driver-verified">✓ Verificado</span>
+        <span class="driver-verified">Datos del equipo</span>
       </div>`
       )
       .join("");
@@ -2054,32 +2185,7 @@
   // Para tipos de vehículo con varias fotos reales (ej. Sedán), las va
   // rotando automáticamente para mostrar que puede llegar cualquiera de
   // esos autos — el cliente no elige el vehículo específico.
-  let vehiclePhotoIntervals = [];
-  function wireVehiclePhotoRotation() {
-    // Si esta función se vuelve a llamar (ej. renderVehicles() se ejecuta
-    // de nuevo en el futuro), hay que limpiar los intervals anteriores
-    // antes de crear otros — si no, se acumulan y las fotos rotan cada vez
-    // más rápido sin que se note la causa.
-    vehiclePhotoIntervals.forEach((id) => clearInterval(id));
-    vehiclePhotoIntervals = [];
-    $$(".vehicle-photo[data-photos]").forEach((img) => {
-      let photos;
-      try {
-        photos = JSON.parse(img.dataset.photos);
-      } catch (err) {
-        return;
-      }
-      if (photos.length < 2) return;
-      const dots = img.parentElement.querySelectorAll(".vehicle-media-dot");
-      const intervalId = setInterval(() => {
-        const next = (Number(img.dataset.photoIdx) + 1) % photos.length;
-        img.dataset.photoIdx = String(next);
-        img.src = photos[next];
-        dots.forEach((d, i) => d.classList.toggle("on", i === next));
-      }, 3200);
-      vehiclePhotoIntervals.push(intervalId);
-    });
-  }
+
 
   // Efecto de tarjeta "fluida": inclinación 3D que sigue el cursor, para
   // que al pasar el mouse la tarjeta se sienta viva y la imagen/ícono del
@@ -2117,11 +2223,8 @@
      (⚠️ placeholder en data.js) hasta que el cliente entregue los reales.
      ===================================================================== */
   let vehicleModalCtx = null; // { vehicle, idx }
+  let vehicleTransitionTimer = null;
 
-  function renderStars(rating) {
-    const full = Math.round(rating);
-    return Array.from({ length: 5 }, (_, i) => (i < full ? "★" : "☆")).join("");
-  }
 
   const DRIVER_PLACEHOLDER_ICON =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c1.4-3.6 4.4-5.5 7.5-5.5s6.1 1.9 7.5 5.5"/></svg>';
@@ -2155,7 +2258,7 @@
       </button>
       <span class="vehicle-modal-counter">${idx + 1} / ${units.length}</span>`
         : "";
-    media.innerHTML = `<img src="${u.photo}" alt="${vehicle.type} — ${u.model}" class="vehicle-modal-photo-fade${enterClass}">${nav}`;
+    media.innerHTML = `<img src="/${u.photo}" alt="${vehicle.type} — ${u.model}" class="vehicle-modal-photo-fade${enterClass}">${nav}`;
     info.innerHTML = `
       <div class="vehicle-modal-row vehicle-modal-fade${enterClass}">
         <div>
@@ -2165,14 +2268,14 @@
         <span class="vehicle-modal-plate">${u.plate}</span>
       </div>
       <div class="vehicle-modal-driver vehicle-modal-fade${enterClass}">
-        <div class="vehicle-modal-avatar">${u.driverPhoto ? `<img src="${u.driverPhoto}" alt="${u.driverName}">` : DRIVER_PLACEHOLDER_ICON}</div>
+        <div class="vehicle-modal-avatar">${u.driverPhoto ? `<img src="/${u.driverPhoto}" alt="${u.driverName}">` : DRIVER_PLACEHOLDER_ICON}</div>
         <div class="vehicle-modal-driver-text">
           <p class="vehicle-modal-driver-name">${u.driverName}</p>
           <p class="vehicle-modal-driver-meta">${
             u.rating != null ? `<span class="vehicle-modal-stars">${renderStars(u.rating)}</span> ${u.rating.toFixed(1)} · ` : ""
           }${u.trips} viajes completados${u.experience ? ` · ${u.experience}` : ""}</p>
         </div>
-        <span class="vehicle-modal-verified">✓ Verificado</span>
+        <span class="vehicle-modal-verified">Datos del equipo</span>
       </div>
     `;
 
@@ -2181,7 +2284,7 @@
         ? units
             .map(
               (uu, i) =>
-                `<button type="button" class="vehicle-modal-tab${i === idx ? " active" : ""}" data-idx="${i}" role="tab" aria-selected="${i === idx}">${uu.model.split(" ")[0]}</button>`
+                `<button type="button" class="vehicle-modal-tab${i === idx ? " active" : ""}" data-idx="${i}" aria-pressed="${i === idx}">${uu.model.split(" ")[0]}</button>`
             )
             .join("")
         : "";
@@ -2216,22 +2319,29 @@
     const leavingEls = [...$$(".vehicle-modal-photo-fade", media), ...$$(".vehicle-modal-fade", info)];
     leavingEls.forEach((el) => el.classList.add("leaving", forward ? "leave-fwd" : "leave-bwd"));
 
-    setTimeout(() => {
+    const focusClass = document.activeElement?.classList.contains('prev') ? '.vehicle-modal-nav.prev' :
+      document.activeElement?.classList.contains('next') ? '.vehicle-modal-nav.next' : '.vehicle-modal-tab.active';
+    const session = vehicleModalCtx;
+    vehicleTransitionTimer = setTimeout(() => {
+      if (vehicleModalCtx !== session) return;
       vehicleModalCtx.idx = newIdx;
       renderVehicleModalUnit(forward ? "fwd" : "bwd");
       vehicleModalCtx.animating = false;
-    }, 170);
+      $(focusClass)?.focus({preventScroll:true});
+    }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 170);
   }
 
   function openVehicleModal(vehicle) {
+    clearTimeout(vehicleTransitionTimer);
     vehicleModalCtx = { vehicle, idx: 0 };
     renderVehicleModalUnit();
-    $("#vehicleModal").classList.add("open");
+    M360UI.open('vehicleModal');
     trackEvent("vehicle_view", { vehicle_type: vehicle.type });
   }
 
   function closeVehicleModal() {
-    $("#vehicleModal").classList.remove("open");
+    clearTimeout(vehicleTransitionTimer);
+    M360UI.close('vehicleModal');
     vehicleModalCtx = null;
   }
 
@@ -2286,7 +2396,7 @@
           <span>${item.q}</span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
         </button>
-        <div class="faq-answer" id="faq-a-${i}" role="region" aria-labelledby="faq-q-${i}">
+        <div class="faq-answer" hidden id="faq-a-${i}" role="region" aria-labelledby="faq-q-${i}">
           <p>${item.a}</p>
         </div>
       </div>`
@@ -2296,6 +2406,7 @@
       btn.addEventListener("click", () => {
         const answer = document.getElementById(btn.getAttribute("aria-controls"));
         const isOpen = answer.classList.toggle("open");
+        answer.hidden = !isOpen;
         btn.setAttribute("aria-expanded", String(isOpen));
         btn.classList.toggle("open", isOpen);
       });
@@ -2323,15 +2434,14 @@
      Analítica (lista para activar en cuanto se conecte Google Analytics)
      ===================================================================== */
   function trackEvent(name, params) {
-    if (typeof window.gtag === "function") {
-      window.gtag("event", name, params || {});
-    }
+    if (typeof window.m360Track === 'function') window.m360Track(name, params);
   }
 
   function wireAnalyticsEvents() {
-    document.addEventListener("click", (e) => {
-      const waBtn = e.target.closest('a[href*="wa.me"]');
-      if (waBtn) trackEvent("whatsapp_click", { link_id: waBtn.id || "unknown" });
+    document.addEventListener('click', e => {
+      const link = e.target.closest('a[href*="wa.me"]');
+      if (!link) return;
+      trackEvent(link.href.includes('50375308948') ? 'agency_contact' : 'contact_handoff', { action: link.id || 'link' });
     });
   }
 
@@ -2404,19 +2514,27 @@
      PWA: registro del service worker (instalable / carga más rápida)
      ===================================================================== */
   function registerServiceWorker() {
-    if (!("serviceWorker" in navigator)) return;
-    // Si una pestaña queda abierta y publicamos una actualización, el
-    // navegador instala el nuevo service worker en segundo plano pero la
-    // pestaña sigue mostrando el código viejo hasta que recarga. Con esto,
-    // en cuanto el nuevo worker toma control, recargamos una sola vez
-    // automáticamente para que nadie se quede con una versión desactualizada.
-    let refreshed = false;
-    navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (refreshed) return;
-      refreshed = true;
-      window.location.reload();
-    });
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+    if (!('serviceWorker' in navigator) || !['movilidad360sv.com','www.movilidad360sv.com'].includes(location.hostname)) return;
+    let applying = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (applying) location.reload(); });
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      const offer = () => {
+        if (!reg.waiting || !navigator.serviceWorker.controller) return;
+        const notice = $('#updateNotice');
+        if (!notice) return;
+        notice.hidden = false;
+        $('#dismissUpdate').onclick = () => { notice.hidden = true; };
+        $('#applyUpdate').onclick = () => {
+          if ($('#paradas')) persistAll();
+          applying = true; reg.waiting.postMessage({type:'ACTIVATE_UPDATE'});
+        };
+      };
+      offer();
+      reg.addEventListener('updatefound', () => {
+        const installing = reg.installing;
+        installing?.addEventListener('statechange', () => { if (installing.state === 'installed') offer(); });
+      });
+    }).catch(() => { /* Browsing remains available without offline installation. */ });
   }
 
   /* =====================================================================
@@ -2424,9 +2542,12 @@
      ===================================================================== */
   function wireTogglePanels() {
     $$("[data-toggle]").forEach((btn) => {
+      const panel = document.getElementById(btn.dataset.toggle);
+      panel.hidden = true; panel.inert = true;
+      btn.setAttribute('aria-controls', panel.id);
       btn.addEventListener("click", () => {
-        const panel = document.getElementById(btn.dataset.toggle);
         const isOpen = panel.classList.toggle("open");
+        panel.hidden = !isOpen; panel.inert = !isOpen;
         btn.setAttribute("aria-expanded", String(isOpen));
         const icon = btn.querySelector("svg");
         if (icon) icon.style.transform = isOpen ? "rotate(45deg)" : "rotate(0deg)";
@@ -2449,14 +2570,21 @@
     if (!video) return;
     const source = video.querySelector("source[data-src]");
     if (!source) return;
+    video.controls = true;
+    const restricted = window.matchMedia('(prefers-reduced-motion: reduce)').matches || navigator.connection?.saveData;
 
-    let loaded = false;
+    let loaded = false, inView = false, userPaused = false;
+    video.addEventListener('pause',()=>{ if(inView && !document.hidden) userPaused=true; });
+    video.addEventListener('play',()=>{ userPaused=false; });
+    document.addEventListener('visibilitychange',()=>{ if(document.hidden) video.pause(); else if(inView && !restricted && !userPaused) tryPlay(); });
     function ensureLoaded() {
       if (loaded) return;
       loaded = true;
       source.src = source.dataset.src;
       video.load();
     }
+    const playButton = $('#playTutorial');
+    if (playButton) playButton.addEventListener('click', () => { ensureLoaded(); video.play().catch(()=>{playButton.textContent='Reintentar reproducción';}); });
     function tryPlay() {
       ensureLoaded();
       // El navegador puede bloquear el autoplay (poco común con muted,
@@ -2467,14 +2595,15 @@
     }
 
     if (!("IntersectionObserver" in window)) {
-      tryPlay();
+      if (!restricted) tryPlay();
       return;
     }
     const obs = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) tryPlay();
-          else if (loaded) video.pause();
+          inView = entry.isIntersecting;
+          if (inView && !restricted && !userPaused && !document.hidden) tryPlay();
+          else if (!inView && loaded) video.pause();
         });
       },
       { threshold: 0.25 }
@@ -2504,21 +2633,23 @@
 
     const driverToggle = document.getElementById("join-driver-toggle");
     const driverFields = document.getElementById("join-driver-fields");
+    driverFields.hidden = true; driverFields.inert = true;
     driverToggle.addEventListener("click", () => {
       const isOn = driverToggle.classList.toggle("on");
       driverToggle.setAttribute("aria-pressed", String(isOn));
       driverFields.classList.toggle("open", isOn);
+      driverFields.hidden = !isOn; driverFields.inert = !isOn;
     });
 
-    const val = (id) => (document.getElementById(id).value || "").trim();
+    const val = (id) => sanitizeWaText((document.getElementById(id).value || "").trim().slice(0, 600));
 
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       const errorEl = document.getElementById("join-form-error");
       const name = val("join-name");
-      const phone = val("join-phone");
+      const phone = M360Core.phone(val("join-phone"));
       if (!name || !phone) {
-        errorEl.textContent = "Escribe al menos tu nombre y tu teléfono para poder contactarte.";
+        errorEl.textContent = "Escribe tu nombre y un teléfono válido para poder contactarte.";
         errorEl.hidden = false;
         (name ? document.getElementById("join-phone") : document.getElementById("join-name")).focus();
         return;
@@ -2530,7 +2661,7 @@
       // "3" o "999" tal cual al mensaje de WhatsApp.
       const age = val("join-age");
       const ageNum = Number(age);
-      if (age && (!Number.isFinite(ageNum) || ageNum < 18 || ageNum > 80)) {
+      if (age && (!Number.isInteger(ageNum) || ageNum < 18 || ageNum > 80)) {
         errorEl.textContent = "Escribe una edad válida (entre 18 y 80 años), o deja el campo vacío.";
         errorEl.hidden = false;
         document.getElementById("join-age").focus();
@@ -2570,7 +2701,7 @@
         if (driverExperience) lines.push(`Experiencia transportando pasajeros/encomiendas: ${driverExperience}`);
       }
 
-      trackEvent("whatsapp_click", { link_id: "join-us" });
+      trackEvent("job_handoff", { action: "application" });
       window.open(waLink(lines.join("\n")), "_blank", "noopener");
     });
   }
@@ -2582,11 +2713,16 @@
     renderAirports();
     renderDepartments();
     renderTourism();
-    if (lastMovilizarteSelection) selectMovilizarteDestination(lastMovilizarteSelection);
-    if (lastAirportSelection) selectAirport(lastAirportSelection);
-    if (lastDepartmentSelection) selectDepartment(lastDepartmentSelection);
-    if (lastTourismSelection) selectTourism(lastTourismSelection);
-    if (lastTourismRouteSelection) selectTouristRoute(lastTourismRouteSelection);
+    ['movilizarte','aeropuerto','departamento','turismo'].forEach(prefix => invalidateQuote(prefix));
+    refreshActiveQuote();
+  }
+
+  function refreshActiveQuote() {
+    if (activeService === 'movilizarte' && lastMovilizarteSelection) selectMovilizarteDestination(lastMovilizarteSelection);
+    if (activeService === 'aeropuerto' && lastAirportSelection) selectAirport(lastAirportSelection);
+    if (activeService === 'departamento' && lastDepartmentSelection) selectDepartment(lastDepartmentSelection);
+    if (activeService === 'turismo' && lastTourismSelection) selectTourism(lastTourismSelection);
+    if (activeService === 'turismo' && lastTourismRouteSelection) selectTouristRoute(lastTourismRouteSelection);
   }
 
   /* =====================================================================
@@ -2596,10 +2732,81 @@
      instante, incluso sin conexión.
      ===================================================================== */
   const STORAGE_KEY = "movilidad360_state_v1";
+  let draftCleared = false;
+
+  function captureSavedRoute(service, rows) {
+    if (service === 'tarifafija') return M360Planner.route({ service, fixedName: FIXED_ROUTES.destinations[fixedRouteIdx]?.name });
+    const names = labels => rows.find(row => labels.includes(row.label))?.value;
+    const data = quoteRouteData[service];
+    const source = service === 'encomienda' ? parcelState : service === 'mudanza' ? mudanzaState : null;
+    const origin = data?.originLatLng ? { lat: data.originLatLng[0], lng: data.originLatLng[1] } : source?.fromPoint;
+    const destination = data?.destLatLng ? { lat: data.destLatLng[0], lng: data.destLatLng[1] } : source?.toPoint;
+    return M360Planner.route({ service, origin: { ...origin, name: names(['Desde','Recolección']) }, destination: { ...destination, name: names(['Hasta','Entrega']) },
+      airportDirection, stops: data?.stops, size: source?.size });
+  }
+
+  function repeatSavedRoute(raw) {
+    const saved = M360Planner.route(raw); if (!saved) return;
+    const fixedIndex = saved.service === 'tarifafija' ? FIXED_ROUTES.destinations.findIndex(d => d.name === saved.fixedName) : null;
+    if (fixedIndex === -1) {
+      $('#savedRoutesPanel').open = true;
+      $('#savedRoutesStatus').textContent = 'Esta tarifa ya no está en el catálogo. Elige un destino actualizado.';
+      $('#savedRoutesPanel summary').focus();
+      return;
+    }
+    lastMovilizarteSelection = null; lastAirportSelection = null; lastDepartmentSelection = null;
+    lastTourismSelection = null; lastTourismRouteSelection = null;
+    confirmationDrafts.clear();
+    M360Request.clearDrafts();
+    TRAVEL_PREFIXES.forEach(prefix => applyPaxPetsUi(prefix, 1, false));
+    TRAVEL_PREFIXES.filter(p => p !== 'tarifafija').forEach(p => invalidateQuote(p));
+    history.replaceState(null, '', '#stop-' + saved.service);
+    activeService = saved.service;
+    if (saved.service === 'tarifafija') {
+      fixedRouteIdx = fixedIndex;
+      renderFixedRoutes(); updateFixedQuote();
+    } else if (saved.service === 'encomienda' || saved.service === 'mudanza') {
+      const parcel = saved.service === 'encomienda';
+      const state = parcel ? parcelState : mudanzaState;
+      state.size = saved.size; state.fromPoint = saved.origin; state.toPoint = saved.destination;
+      if (parcel) {
+        state.urgent = false; state.fragile = false;
+        for (const id of ['parcel-urgent', 'parcel-fragile']) { $('#' + id).classList.remove('on'); $('#' + id).setAttribute('aria-pressed', 'false'); }
+        $('#parcel-urgent-warning').hidden = true;
+      }
+      const prefix = parcel ? 'parcel' : 'mudanza';
+      $('#' + prefix + '-from').value = saved.origin.name; $('#' + prefix + '-to').value = saved.destination.name;
+      $('#' + prefix + '-notes').value = '';
+      $$('#' + prefix + '-size .pill-option').forEach(button => { const selected = button.dataset.size === saved.size; button.classList.toggle('selected', selected); button.setAttribute('aria-pressed', String(selected)); });
+      $('#' + prefix + '-from-map-hint').textContent = 'Punto guardado: revisa que siga siendo correcto.';
+      $('#' + prefix + '-to-map-hint').textContent = 'Punto guardado: revisa que siga siendo correcto.';
+      if (parcel) updateParcelQuote(); else updateMudanzaQuote();
+    } else if (saved.service === 'aeropuerto' && saved.airportDirection === 'from') {
+      airportDirection = 'from'; airportArrivalDestination = saved.destination;
+      $('#airport-destination').value = saved.destination.name; syncAirportDirection(); selectAirport(saved.origin);
+    } else {
+      selectOriginFromSearch(saved.origin);
+      if (saved.service === 'movilizarte') selectMovilizarteDestination(saved.destination);
+      if (saved.service === 'departamento') selectDepartment(saved.destination);
+      if (saved.service === 'aeropuerto') { airportDirection = 'to'; syncAirportDirection(); selectAirport(saved.destination); }
+      if (saved.service === 'turismo') {
+        if (saved.stops?.length) selectTouristRoute({ name: 'Ruta guardada', stops: saved.stops.map(p => p.name), points: saved.stops });
+        else selectTourism(saved.destination);
+      }
+    }
+    activateService(saved.service, true);
+    $('#draftStatus').textContent = 'Ruta recuperada. Revisa los puntos; fecha, pasajeros y equipaje se confirman de nuevo.';
+    persistAll();
+  }
 
   function persistAll() {
+    if (draftCleared) return;
     try {
       const state = { travel: {}, parcel: null, mudanza: null, tourismRoute: null, fixedRoute: null };
+      state.version = M360Core.DRAFT_VERSION; state.savedAt = Date.now();
+      state.airportDirection = airportDirection;
+      state.airportArrivalDestination = airportArrivalDestination;
+      state.origin = userLocation ? { point:{...userLocation}, name:userLocationPlaceName, source:originSource } : null;
       TRAVEL_PREFIXES.forEach((prefix) => {
         const selection = {
           movilizarte: lastMovilizarteSelection,
@@ -2607,19 +2814,15 @@
           departamento: lastDepartmentSelection,
           turismo: lastTourismSelection,
         }[prefix];
-        if (!selection || !lastQuoteResult[prefix]) return;
+        if (!selection) return;
         state.travel[prefix] = {
           place: selection,
-          quoteData: lastQuoteResult[prefix],
-          route: quoteRouteData[prefix] || null,
           paxPets: paxPetsState[prefix] || { pax: 1, pets: false },
         };
       });
       if (lastTourismRouteSelection && lastQuoteResult.turismo) {
         state.tourismRoute = {
           route: lastTourismRouteSelection,
-          quoteData: lastQuoteResult.turismo,
-          route_: quoteRouteData.turismo || null,
           paxPets: paxPetsState.turismo || { pax: 1, pets: false },
         };
       }
@@ -2646,9 +2849,11 @@
         };
       }
       if (fixedRouteIdx != null) {
-        state.fixedRoute = { idx: fixedRouteIdx, paxPets: paxPetsState.tarifafija || { pax: 1, pets: false } };
+        state.fixedRoute = { id: M360Core.placeId(FIXED_ROUTES.destinations[fixedRouteIdx].name), paxPets: paxPetsState.tarifafija || { pax: 1, pets: false } };
       }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      const remember = $('#rememberDraft')?.checked;
+      (remember ? localStorage : sessionStorage).setItem(STORAGE_KEY, JSON.stringify(state));
+      (remember ? sessionStorage : localStorage).removeItem(STORAGE_KEY);
     } catch (err) {
       // localStorage puede fallar en modo privado; no es crítico para el sitio.
     }
@@ -2664,9 +2869,20 @@
   // pida su ubicación nunca más, sin ningún error visible.
   function restoreAll() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const remembered = localStorage.getItem(STORAGE_KEY);
+      const raw = remembered || sessionStorage.getItem(STORAGE_KEY);
       if (!raw) return;
-      const state = JSON.parse(raw);
+      const state = M360Core.restoreDraft(JSON.parse(raw));
+      if (!state) { localStorage.removeItem(STORAGE_KEY); sessionStorage.removeItem(STORAGE_KEY); return; }
+      if ($('#rememberDraft')) $('#rememberDraft').checked = !!remembered;
+      if (state.origin) {
+        userLocation = {...state.origin.point};
+        userLocationPlaceName = (state.origin.source === 'gps' ? 'Punto GPS guardado: ' : '') + String(state.origin.name || 'Origen elegido');
+        originSource = 'search'; // A stored GPS point is not the user's current location.
+        $('#origin-search-input').value = userLocationPlaceName;
+        $('#geo-status').textContent = `Salida recuperada: ${originLabel()}. Puedes cambiarla.`;
+        $('.geo-banner').classList.add('located');
+      }
       restoreAllFromState(state);
     } catch (err) {
       /* Estado guardado corrupto o de una forma que ya no reconocemos:
@@ -2676,10 +2892,15 @@
   }
 
   function restoreAllFromState(state) {
+    airportDirection = state.airportDirection === 'from' ? 'from' : 'to';
+    airportArrivalDestination = M360Core.validPoint(state.airportArrivalDestination) && typeof state.airportArrivalDestination.name === 'string' ? state.airportArrivalDestination : null;
+    if (airportArrivalDestination) $('#airport-destination').value = airportArrivalDestination.name;
+    syncAirportDirection();
     if (state.travel) {
       Object.keys(state.travel).forEach((prefix) => {
+        if (!['movilizarte','aeropuerto','departamento','turismo'].includes(prefix)) return;
         const saved = state.travel[prefix];
-        if (!saved || !saved.place) return;
+        if (!saved || !M360Core.validPoint(saved.place) || typeof saved.place.name !== 'string') return;
         if (prefix === "movilizarte") {
           lastMovilizarteSelection = saved.place;
           $("#input-movilizarte").value = saved.place.name || "";
@@ -2689,19 +2910,20 @@
         if (prefix === "turismo") lastTourismSelection = saved.place;
 
         if (saved.paxPets) applyPaxPetsUi(prefix, saved.paxPets.pax, saved.paxPets.pets);
-        if (saved.route) quoteRouteData[prefix] = saved.route;
-        if (saved.quoteData) showQuote(prefix, saved.quoteData);
+        // Stored amounts and geometry are never trusted as a current quote.
       });
     }
 
     if (state.tourismRoute) {
-      lastTourismRouteSelection = state.tourismRoute.route;
+      const savedTour = state.tourismRoute.route;
+      lastTourismRouteSelection = TOURIST_ROUTES.find(r=>r.name===savedTour?.name) || null;
+      if (!lastTourismRouteSelection && Array.isArray(savedTour?.points) && savedTour.points.length > 0 && savedTour.points.length <= 12 && savedTour.points.every(p=>M360Core.validPoint(p) && typeof p.name === 'string')) {
+        lastTourismRouteSelection = { name: 'Ruta guardada', stops: savedTour.points.map(p=>p.name), points: savedTour.points };
+      }
       if (state.tourismRoute.paxPets) applyPaxPetsUi("turismo", state.tourismRoute.paxPets.pax, state.tourismRoute.paxPets.pets);
-      if (state.tourismRoute.route_) quoteRouteData.turismo = state.tourismRoute.route_;
-      if (state.tourismRoute.quoteData) showQuote("turismo", state.tourismRoute.quoteData);
     }
 
-    if (state.mudanza) {
+    if (state.mudanza && mudanzaSizeLabels[state.mudanza.size]) {
       mudanzaState.size = state.mudanza.size;
       mudanzaState.fromPoint = state.mudanza.fromPoint;
       mudanzaState.toPoint = state.mudanza.toPoint;
@@ -2718,7 +2940,7 @@
       updateMudanzaQuote();
     }
 
-    if (state.parcel) {
+    if (state.parcel && parcelSizeLabels[state.parcel.size]) {
       parcelState.size = state.parcel.size;
       parcelState.urgent = state.parcel.urgent;
       parcelState.fragile = state.parcel.fragile;
@@ -2733,6 +2955,7 @@
       const urgentSwitch = $("#parcel-urgent");
       urgentSwitch.classList.toggle("on", !!state.parcel.urgent);
       urgentSwitch.setAttribute("aria-pressed", String(!!state.parcel.urgent));
+      $('#parcel-urgent-warning').hidden = !state.parcel.urgent;
       const fragileSwitch = $("#parcel-fragile");
       fragileSwitch.classList.toggle("on", !!state.parcel.fragile);
       fragileSwitch.setAttribute("aria-pressed", String(!!state.parcel.fragile));
@@ -2744,8 +2967,9 @@
       updateParcelQuote();
     }
 
-    if (state.fixedRoute && FIXED_ROUTES.destinations[state.fixedRoute.idx]) {
-      fixedRouteIdx = state.fixedRoute.idx;
+    const fixedIndex = state.fixedRoute ? FIXED_ROUTES.destinations.findIndex(d=>M360Core.placeId(d.name)===state.fixedRoute.id) : -1;
+    if (fixedIndex >= 0) {
+      fixedRouteIdx = fixedIndex;
       renderFixedRoutes();
       if (state.fixedRoute.paxPets) applyPaxPetsUi("tarifafija", state.fixedRoute.paxPets.pax, state.fixedRoute.paxPets.pets);
       updateFixedQuote();
@@ -2799,76 +3023,70 @@
   /* =====================================================================
      Inicialización
      ===================================================================== */
-  document.addEventListener("DOMContentLoaded", () => {
-    $("#year").textContent = new Date().getFullYear();
-
-    wireHeroVideo();
-    wireGenericWaLinks();
-    wireTogglePanels();
-    wireMapModal();
-    wireConfirmModal();
-    wireVehicleModal();
-    wireJourneyScrollFx();
-    wireCoverageMap();
-    renderTestimonials();
-    renderVehicles();
-    renderDrivers();
-    renderStats();
-    renderFAQ();
-    wireGoogleReviewsLink();
-    wireAnalyticsEvents();
-    wireInstallFloat();
-    registerServiceWorker();
-
-    TRAVEL_PREFIXES.forEach(injectPaxPetsControls);
-
-    // Parada 1
-    renderLocalSuggestions("");
-    $("#input-movilizarte").addEventListener(
-      "input",
-      debounce((e) => renderLocalSuggestions(e.target.value), 180)
-    );
-
-    // Parada 2
-    renderAirports();
-    $("#btn-locate").addEventListener("click", () => {
-      requestGeolocation(refreshAllQuotesForNewOrigin);
+  let activeService = 'movilizarte';
+  function activateService(service, focus = false) {
+    const current = ['movilizarte','aeropuerto','encomienda','departamento','turismo','mudanza','tarifafija'].includes(service) ? service : 'movilizarte';
+    const changed = current !== activeService;
+    activeService = current;
+    $$('[data-stop]').forEach(stop => {
+      const active = stop.id === 'stop-' + current;
+      stop.hidden = !active; stop.inert = !active; stop.classList.add('in-view');
+      const panel = $('.panel', stop), launch = $('[data-toggle]', stop);
+      if (active && panel) { panel.hidden = false; panel.inert = false; panel.classList.add('open'); launch?.setAttribute('aria-expanded','true'); }
     });
-    wireOriginSearch();
+    $$('[data-service]').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.service===current)));
+    const needsOrigin = !['encomienda','mudanza','tarifafija'].includes(current) && !(current === 'aeropuerto' && airportDirection === 'from');
+    $('.geo-banner').hidden = !needsOrigin;
+    $('#airportDirectionGroup').hidden = current !== 'aeropuerto';
+    $('#chosenServiceLabel').textContent = $('[data-service="' + current + '"]').dataset.name;
+    if (changed) refreshActiveQuote();
+    if (focus) {
+      $('#serviceSelector').open = false;
+      const title = $('#stop-' + current + ' h3'); title.tabIndex = -1;
+      const target = needsOrigin && !userLocation ? $('#origin-search-input') :
+        current === 'aeropuerto' && airportDirection === 'from' && !airportArrivalDestination ? $('#airport-destination') : title;
+      target.focus({preventScroll:true}); target.scrollIntoView({block:'center', behavior:'auto'});
+    }
+  }
 
-    // Parada 3
-    wireParcelForm();
-
-    // Parada 4
-    renderDepartments();
-
-    // Parada 5
-    renderTouristRoutes();
-    renderTouristChips();
-    renderTourism();
-    $("#input-turismo").addEventListener(
-      "input",
-      debounce((e) => {
-        touristSearch = e.target.value;
-        renderTourism();
-      }, 180)
-    );
-
-    // Parada 6
-    wireMudanzaForm();
-
-    // Parada 7
-    wireFixedRoutesForm();
-
-    // Trabaja con nosotros
-    wireJoinUsForm();
-
-    // Restauramos la última cotización guardada (si existe) antes de pedir
-    // ubicación, para que el cliente no pierda lo que ya tenía seleccionado.
-    restoreAll();
-
-    // Pedimos ubicación una sola vez al cargar, para que todas las
-    // cotizaciones (no solo aeropuerto) usen la posición real del usuario.
-    requestGeolocation(refreshAllQuotesForNewOrigin);
+  document.addEventListener("DOMContentLoaded", () => {
+    if ($('#year')) $('#year').textContent = new Date().getFullYear();
+    wireHeroVideo(); wireGenericWaLinks(); wireAnalyticsEvents(); wireInstallFloat(); registerServiceWorker();
+    wireCoverageMap(); renderTestimonials(); renderVehicles(); renderDrivers(); renderStats(); renderFAQ(); wireGoogleReviewsLink(); wireJoinUsForm();
+    if ($('#vehicleModal')) { M360UI.register('vehicleModal', closeVehicleModal); wireVehicleModal(); }
+    if (!$('#paradas')) return;
+    M360UI.register('mapModal', closeMapModal); M360UI.register('confirmModal', closeConfirmModal);
+    wireTogglePanels(); wireMapModal(); wireConfirmModal(); M360Request.init(repeatSavedRoute);
+    TRAVEL_PREFIXES.forEach(injectPaxPetsControls);
+    renderLocalSuggestions('');
+    wireExplicitSearch($('#input-movilizarte'), $('#list-movilizarte'), selectMovilizarteDestination);
+    $('#input-movilizarte').addEventListener('input', () => { lastMovilizarteSelection = null; invalidateQuote('movilizarte'); persistAll(); });
+    renderAirports(); wireAirportDirection();
+    $('#btn-locate').addEventListener('click', () => requestGeolocation(refreshAllQuotesForNewOrigin));
+    wireOriginSearch(); wireParcelForm(); renderDepartments();
+    wireExplicitSearch($('#input-departamento'), $('#departamento-suggestions'), selectDepartment);
+    $('#input-departamento').addEventListener('input', () => { lastDepartmentSelection=null; invalidateQuote('departamento'); persistAll(); });
+    renderTouristRoutes(); renderTouristChips(); renderTourism();
+    wireExplicitSearch($('#input-turismo'), $('#turismo-suggestions'), selectTourism);
+    $('#input-turismo').addEventListener('input', () => {
+      lastTourismSelection=null; lastTourismRouteSelection=null; invalidateQuote('turismo');
+      touristSearch = $('#input-turismo').value; renderTourism(); persistAll();
+    });
+    wireMudanzaForm(); wireFixedRoutesForm(); restoreAll(); refreshAllQuotesForNewOrigin();
+    $$('[data-service]').forEach(b=>b.addEventListener('click',()=>{
+      history.replaceState(null,'','#stop-'+b.dataset.service); activateService(b.dataset.service,true);
+    }));
+    window.addEventListener('hashchange',()=>activateService(location.hash.replace('#stop-','')));
+    activateService(location.hash.replace('#stop-',''));
+    if (location.hash.startsWith('#stop-')) $('#serviceSelector').open = false;
+    $('#rememberDraft').addEventListener('change',()=>{
+      persistAll(); $('#draftStatus').textContent = $('#rememberDraft').checked ? 'Ruta guardada por 24 horas. Evita esta opción en dispositivos compartidos.' : 'Solo se conservará en esta pestaña.';
+    });
+    $('#clearDraft').addEventListener('click',()=>{
+      draftCleared = true;
+      try { localStorage.removeItem(STORAGE_KEY); sessionStorage.removeItem(STORAGE_KEY); localStorage.removeItem('movilidad360_trip_requests_count'); } catch {}
+      location.reload();
+    });
+    window.addEventListener('pagehide',persistAll);
   });
 })();

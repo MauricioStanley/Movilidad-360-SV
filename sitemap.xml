@@ -1,13 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://movilidad360sv.com/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://movilidad360sv.com/privacy.html</loc>
-    <changefreq>yearly</changefreq>
-    <priority>0.3</priority>
-  </url>
+  <url><loc>https://movilidad360sv.com/</loc></url>
+  <url><loc>https://movilidad360sv.com/cotizar/</loc></url>
+  <url><loc>https://movilidad360sv.com/flota/</loc></url>
+  <url><loc>https://movilidad360sv.com/ayuda/</loc></url>
+  <url><loc>https://movilidad360sv.com/nosotros/</loc></url>
+  <url><loc>https://movilidad360sv.com/trabaja-con-nosotros/</loc></url>
+  <url><loc>https://movilidad360sv.com/privacy.html</loc></url>
+  <url><loc>https://movilidad360sv.com/viajes-locales/</loc></url>
+  <url><loc>https://movilidad360sv.com/transporte-aeropuerto/</loc></url>
+  <url><loc>https://movilidad360sv.com/encomiendas/</loc></url>
+  <url><loc>https://movilidad360sv.com/viajes-interdepartamentales/</loc></url>
+  <url><loc>https://movilidad360sv.com/transporte-turistico/</loc></url>
+  <url><loc>https://movilidad360sv.com/mudanzas/</loc></url>
 </urlset>

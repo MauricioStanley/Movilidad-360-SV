@@ -1,54 +1,27 @@
-/* Service worker mínimo: cachea el shell básico para que el sitio sea
-   instalable ("Agregar a pantalla de inicio"). Estrategia RED PRIMERO:
-   si hay internet siempre se sirve la versión más nueva del servidor y la
-   caché queda solo como respaldo offline. Así cada actualización del sitio
-   se refleja de inmediato, sin tener que recargar dos veces. */
-const CACHE_NAME = "movilidad360-shell-v33";
-const SHELL_FILES = [
-  "./",
-  "./index.html",
-  "./css/styles.css?v=33",
-  "./js/data.js?v=33",
-  "./js/app.js?v=33",
-  "./js/enhance.js?v=33",
-  "./js/ga.js?v=33",
-];
-
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_FILES)).catch(() => {})
-  );
-  self.skipWaiting();
+/* Atomic offline shell. An update waits for explicit user activation. */
+const CACHE_NAME = 'movilidad360-shell-v36';
+const SHELL_FILES = ['/', '/cotizar/', '/flota/', '/ayuda/', '/nosotros/', '/trabaja-con-nosotros/', '/404.html',
+ '/css/styles.css?v=36','/css/preview.css?v=36','/css/pages.css?v=36',
+ '/js/core.js?v=36','/js/planner.js?v=36','/js/request-options.js?v=36','/js/geo.js?v=36','/js/ui.js?v=36','/js/data.js?v=36','/js/app.js?v=36',
+ '/js/enhance.js?v=36','/js/site.js?v=36','/js/ga.js?v=36','/js/year.js?v=36'];
+self.addEventListener('install', event=>{
+  event.waitUntil(caches.open(CACHE_NAME).then(cache=>cache.addAll(SHELL_FILES)));
 });
-
-self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-      )
-      .then(() => self.clients.claim())
-  );
+self.addEventListener('message',event=>{if(event.data?.type==='ACTIVATE_UPDATE')self.skipWaiting();});
+self.addEventListener('activate',event=>{
+  event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('movilidad360-')&&k!==CACHE_NAME).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
 });
-
-self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
-  const url = new URL(event.request.url);
-  if (url.origin !== self.location.origin) return; // no interceptar OSRM/Nominatim/tiles/fuentes
-
-  // "no-store" fuerza a que el navegador siempre pida la versión real al
-  // servidor, ignorando su propia caché HTTP (GitHub Pages permite
-  // cachear hasta 10 min) — así "red primero" es red primero de verdad.
-  event.respondWith(
-    fetch(event.request, { cache: "no-store" })
-      .then((res) => {
-        if (res && res.ok) {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        }
-        return res;
-      })
-      .catch(() => caches.match(event.request))
-  );
+self.addEventListener('fetch',event=>{
+  const request=event.request, url=new URL(request.url);
+  if(request.method!=='GET'||url.origin!==self.location.origin)return;
+  if(request.headers.has('range')||url.pathname.startsWith('/video/')||url.pathname.startsWith('/img/'))return;
+  if(request.mode==='navigate'){
+    event.respondWith(fetch(request,{cache:'no-cache'}).catch(async()=>{
+      const cache=await caches.open(CACHE_NAME);
+      return await cache.match(url.pathname)||await cache.match('/404.html')||new Response('Sin conexión',{status:503});
+    }));return;
+  }
+  if(SHELL_FILES.includes(url.pathname+url.search)){
+    event.respondWith(caches.open(CACHE_NAME).then(async cache=>await cache.match(request)||fetch(request)));
+  }
 });

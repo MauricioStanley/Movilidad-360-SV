@@ -2,8 +2,8 @@
    MOVILIDAD 360 SV — data.js
    Toda la información editable del sitio vive aquí. No hay backend: este
    archivo es la "base de datos" del proyecto mientras se aloja en GitHub
-   Pages. Los precios son estimados/inventados a propósito (el cliente
-   indicó que se reemplazarán por tarifas reales más adelante).
+   Pages. Las tarifas publicadas se conservan; cualquier cambio comercial
+   necesita aprobación del negocio. Nunca usar este archivo como secreto.
    ========================================================================= */
 
 const CONFIG = {
@@ -11,13 +11,15 @@ const CONFIG = {
   // SIN "+" y sin espacios. Ejemplo El Salvador: "503" + 8 dígitos.
   whatsappNumber: "50375031132",
   brand: "MOVILIDAD 360 SV",
+  tariffVersion: "2026-09-tiers-v1",
+  geocodingBaseUrl: "https://nominatim.openstreetmap.org",
   slogan: "Tu destino está más cerca de lo que te imaginas",
   // Punto de referencia por defecto: Plaza Las Américas (Monumento al Divino
   // Salvador del Mundo), usado como origen cuando el usuario no comparte su
   // ubicación. Debe ser un punto distinto de cualquier destino de las listas
   // (LOCAL_PLACES / TOURIST_PLACES): si coincide exacto con uno, cotizar
   // "hacia allí" sin GPS daba 0 km, ruta invisible y precio al mínimo.
-  originFallback: { name: "San Salvador (Centro)", lat: 13.70169, lng: -89.22437 },
+  originFallback: { name: "Plaza Las Américas (solo referencia del mapa)", lat: 13.70169, lng: -89.22437 },
   // Tarifa progresiva por tramos (estilo inDrive), igual para cualquier
   // viaje de pasajeros sin importar la zona: cada tramo de distancia
   // tiene su propia tarifa por km, y solo se cobra esa tarifa a los km
@@ -58,6 +60,9 @@ const CONFIG = {
   // calificación con estrellas). Si se deja vacío (""), el botón
   // "Déjanos tu reseña" no se muestra.
   googleWriteReviewUrl: "https://g.page/r/CRSjuTnHg7ohECE/review",
+  // Copia manual de la ficha pública; no se actualiza en tiempo real.
+  // Actualizar rating, count y checkedOn juntos después de consultar Google.
+  googleReviewsSnapshot: { rating: 5.0, count: 8, checkedOn: "2026-10-03" },
   // Métodos de pago que se ofrecen al cliente al cotizar.
   paymentMethods: ["Efectivo", "Transferencia"],
   // Política de cancelación: si el viaje cuesta más de freeThresholdUsd,
@@ -173,24 +178,22 @@ const TOURIST_PLACES = [
     desc: "Islas, manglares y playas tranquilas en el oriente del país." },
 ];
 
-/* ---------- Testimonios ----------
-   La cuadrícula de testimonios está OCULTA en index.html hasta que haya
-   reseñas reales que mostrar (ver el comentario en la sección
-   "reviews-section" de index.html).
-
-   Cuando el Perfil de Empresa ya tenga reseñas:
-   1. Copia aquí de 3 a 6 reseñas reales de Google, cada una con:
-        name    → nombre de quien la escribió (o primer nombre + inicial)
-        service → a qué servicio corresponde ("Viaje local", "Aeropuerto"…)
-        quote   → el texto de la reseña
-        rating  → número de estrellas, 1 a 5 (opcional; si falta, no se
-                  dibujan estrellas en esa tarjeta)
-   2. En index.html, descomenta el bloque <div id="testimonials-grid"> …
-      dentro de la sección de reseñas.
-   Ejemplo de entrada real:
-     { name: "María G.", service: "Aeropuerto", rating: 5,
-       quote: "Puntualísimos y el precio fue el mismo que cotizaron." } */
-const TESTIMONIALS = [];
+/* ---------- Opiniones públicas ----------
+   Extractos consultados en la ficha de Google Maps el 2026-10-03.
+   No son ejemplos, ni calificaciones de un conductor concreto. El texto
+   abreviado se identifica como extracto y enlaza a la ficha original.
+   Para añadir otra opinión: conservar nombre, texto y estrellas de la
+   fuente; no inferir el servicio ni inventar fechas a partir de "hace X días".
+   El renderizador muestra la cuadrícula automáticamente si hay datos válidos.
+   Fuente: https://g.page/r/CRSjuTnHg7ohECE */
+const TESTIMONIALS = [
+  { name: "Roberto Zacarias", rating: 5,
+    quote: "Excelente servicio, amabilidad y seguridad, recomendado" },
+  { name: "Aleja Dominguez", rating: 5,
+    quote: "Excelente servicio y buena atención al reservar" },
+  { name: "Violeta Dominguez", rating: 5,
+    quote: "Excelente servicio buena atención y servicio recomendado" },
+];
 
 /* ---------- Vehículos disponibles ----------
    Ilustrativo: el cliente no elige el vehículo específico, solo el tipo
@@ -359,6 +362,18 @@ const TOURIST_ROUTES = [
    antes de publicar. */
 const FAQS = [
   {
+    q: "¿Puedo programar un viaje o una recogida?",
+    a: "Sí. Al revisar tu solicitud elige Programar e indica fecha y hora de recogida en horario de El Salvador. Para aeropuerto puedes añadir el vuelo y las maletas. No es una reserva automática: el equipo debe aceptar la hora, confirmar disponibilidad y acordar el precio."
+  },
+  {
+    q: "¿Qué pasa si no se puede calcular la ruta?",
+    a: "No calculamos un cobro usando una línea recta. Puedes reintentar o enviar los puntos de salida y destino para una revisión manual de acceso, tiempo y precio. El equipo te responde antes de aceptar el servicio."
+  },
+  {
+    q: "¿Cómo guardo una ruta que uso seguido?",
+    a: "En Revisar solicitud, abre Guardar esta ruta, ponle un nombre y autoriza guardarla en tu dispositivo. Puedes guardar hasta seis durante 90 días. Al volver a usarla calculamos el precio de nuevo: no se guardan reservas, teléfonos ni cuentas bancarias. Evita guardar direcciones en un dispositivo compartido."
+  },
+  {
     q: "¿Cómo se calcula el precio de mi viaje?",
     a: (() => {
       const lines = CONFIG.distanceTiers.map((tier, i) => {
@@ -366,7 +381,7 @@ const FAQS = [
         const range = tier.upTo === Infinity ? `Desde el km ${from}` : `Km ${from}–${tier.upTo}`;
         return `${range}: $${tier.rate.toFixed(2)}/km`;
       });
-      return `El precio se calcula según la distancia real de la ruta por carretera, con una tarifa que baja por tramos entre más largo es el viaje: ${lines.join(" · ")}. Todo viaje tiene una tarifa mínima de $${CONFIG.minFareUsd.toFixed(2)}, sin importar qué tan corto sea. Siempre es un estimado: el precio final se confirma por WhatsApp antes de tu viaje.`;
+      return `El precio se calcula según la distancia calculada de la ruta por carretera, con una tarifa que baja por tramos entre más largo es el viaje: ${lines.join(" · ")}. Todo viaje tiene una tarifa mínima de $${CONFIG.minFareUsd.toFixed(2)}, sin importar qué tan corto sea. Siempre es un estimado: el precio final se confirma por WhatsApp antes de tu viaje.`;
     })(),
   },
   {
@@ -382,19 +397,19 @@ const FAQS = [
   },
   {
     q: "¿Puedo cancelar mi reserva?",
-    a: `Sí. Si el viaje cuesta $${CONFIG.cancellation.freeThresholdUsd} o menos, puedes cancelar sin ningún cargo. Si cuesta más de $${CONFIG.cancellation.freeThresholdUsd}, la cancelación tiene un cargo del ${CONFIG.cancellation.feePercent}% del valor del viaje. Esta política se muestra siempre antes de confirmar tu reserva.`,
+    a: `Sí. Si el viaje cuesta $${CONFIG.cancellation.freeThresholdUsd} o menos, puedes cancelar sin ningún cargo. Si cuesta más de $${CONFIG.cancellation.freeThresholdUsd}, la cancelación tiene un cargo del ${CONFIG.cancellation.feePercent}% del valor del viaje. Se aplica a reservas aceptadas por el equipo y al precio finalmente acordado, no por abrir WhatsApp.`,
   },
   {
-    q: "¿El viaje tiene algún tipo de seguro?",
-    a: "Nuestro compromiso es finalizar el viaje sin importar las condiciones: si ocurre un imprevisto en el camino (clima, tráfico, un desperfecto del vehículo), garantizamos que llegues a tu destino.",
+    q: "¿Qué sucede si hay un imprevisto durante el viaje?",
+    a: "Comunícate con el equipo por WhatsApp para coordinar asistencia y las alternativas disponibles. No se debe continuar un trayecto si las condiciones no son seguras. Este compromiso de atención no sustituye una póliza de seguro: consulta la cobertura aplicable antes de confirmar tu viaje.",
   },
   {
     q: "¿Cuánto tardan en confirmar mi reserva?",
-    a: `Respondemos en un tiempo estimado de ~${CONFIG.responseMinutes} minutos por WhatsApp, en horario de atención.`,
+    a: `El tiempo de respuesta estimado es ~${CONFIG.responseMinutes} minutos por WhatsApp y puede variar según disponibilidad. No representa el tiempo de llegada de un conductor.`,
   },
   {
     q: "¿Puedo pedir un viaje para varios pasajeros o con mascota?",
-    a: `Sí. Al cotizar, indica el número de pasajeros y si llevas mascota — esa información se incluye automáticamente en tu mensaje de WhatsApp para que el equipo prepare el vehículo adecuado. Llevar mascota tiene un recargo fijo de $${CONFIG.petFee.toFixed(2)}.`,
+    a: `Sí. Al cotizar, indica el número de pasajeros y si llevas mascota — esa información se incluye automáticamente en tu mensaje de WhatsApp para que el equipo prepare el vehículo adecuado. Para más de 4 pasajeros, confirma capacidad y vehículo con el equipo. Llevar mascota tiene un recargo fijo de $${CONFIG.petFee.toFixed(2)}.`,
   },
   {
     q: "¿Puedo pedir un viaje para otra persona (no para mí)?",
@@ -402,7 +417,7 @@ const FAQS = [
   },
   {
     q: "¿El precio se puede negociar?",
-    a: "Sí, hasta cierto punto. El precio mostrado es un estimado calculado por distancia; el precio final puede variar según el tráfico, la hora del viaje, si el vehículo lleva aire acondicionado, el clima y otros factores. Al confirmar tu reserva puedes tocar \"¿Deseas negociar tu viaje?\" e indicar cuánto te gustaría pagar — lo revisamos contigo por WhatsApp antes de confirmar.",
+    a: "Sí, hasta cierto punto. El precio mostrado es un estimado calculado por distancia; el precio final puede variar según el tráfico, la hora del viaje, si el vehículo lleva aire acondicionado, el clima y otros factores. Al revisar tu solicitud puedes tocar \"Proponer otro precio\" e indicar cuánto te gustaría pagar — lo revisamos contigo por WhatsApp antes de confirmar.",
   },
   {
     q: "Ya he viajado varias veces con ustedes, ¿tengo algún beneficio?",
